@@ -1,0 +1,158 @@
+Create a modern, clean, responsive UI (Bootstrap 5 only) for HRMSWorld.com, a simple, professional HR management system.
+This is a UI-only project (no backend logic) — just static HTML/CSS pages styled with Bootstrap and a sleek black-and-green theme (black for backgrounds and text accents, green for buttons, highlights, and interactive elements).
+
+🏠 Home Page with Interactive Cost Calculator
+
+Design a Home Page that introduces HRMSWorld.com with a headline, product highlights, and a Cost Calculator section where users can estimate their subscription price.
+
+Calculator Logic (UI simulation only):
+
+Input: “Enter number of employees” (numeric input).
+
+Calculation rules:
+
+If entered employees < 10, calculate as 10 employees minimum.
+
+If 10–25 employees → ₹225 per employee/month.
+
+If 25–50 employees → ₹200 per employee/month.
+
+If 50–100 employees → ₹150 per employee/month.
+
+If 100+ employees → display message “Contact our Sales Team for customized corporate offers.”
+
+Upto 10 employees (minimum) → ₹275 per employee/month (paid annually).
+
+Output: Show cost per employee, total annual cost, and “Contact Sales” or “Request Demo” button.
+
+UI-only functionality: use front-end input, calculation, and display animation (no backend logic).
+
+Include:
+
+CTA buttons like “Get a Quote” and “Request Demo.”
+
+Clean, responsive design that looks great on desktop and mobile.
+
+⚙️ Core HRMS Features (UI Pages Only)
+
+Create UI mockups for each HRMS function using Bootstrap components:
+
+Attendance Management
+
+Clock-In / Clock-Out widget with photo upload (geo-fencing placeholder).
+
+Attendance calendar and history view.
+
+Leave Management
+
+Leave request form, balance display, and calendar for applied leaves.
+
+Workflows
+
+Card or Kanban-style layout for daily approval and activity flows.
+
+Travel & Reimbursements
+
+Expense claim form with upload, claim list with approval status.
+
+Noticeboard
+
+Announcement feed, pinned posts, and “Create Notice” modal.
+
+Payslips
+
+List of monthly payslips with modal view (summary and download option).
+
+Employee Lifecycle
+
+Onboarding progress steps, exit formalities checklist, and HR handover UI.
+
+Mobile App & White-label Section
+
+Placeholder cards promoting Android/iOS apps.
+
+White-label options: upload logo, choose theme color (green variants).
+
+👥 Additional HR Features (UI Only)
+
+Employee Directory: Searchable table/list of employees.
+
+Employee Profile: Details, document uploads, contact info.
+
+Roles & Permissions: List of roles with access levels.
+
+Reports Dashboard: Summary cards for headcount, attendance, leaves.
+
+Notifications Center: Bell icon with dropdown alerts.
+
+📄 Required Pages
+
+Home Page (with interactive cost calculator)
+
+Company Login Page
+
+Employee Login Page
+
+Company Admin Dashboard
+
+Employee Dashboard
+
+Attendance Page
+
+Leave Page
+
+Workflows Page
+
+Travel & Reimbursement Page
+
+Noticeboard Page
+
+Payslips Page
+
+Profile & Directory Page
+
+White-label Settings Page
+
+Responsive mobile layouts for dashboard & calculator
+
+🎨 Design & Theme
+
+Primary Colors:
+
+Black (#000000 / deep charcoal) for background, header, sidebar.
+
+Green (#00C853 or similar) for buttons, highlights, and accents.
+
+Layout: Clean, card-based, minimal shadows, airy spacing.
+
+Typography: Simple, professional Bootstrap defaults.
+
+Components: Navbar, sidebar, cards, modals, forms, tables, badges, and tooltips.
+
+Use placeholder images, sample data, and mock interactions.
+
+Fully responsive for desktop, tablet, and mobile.
+
+📦 Deliverables
+
+Static Bootstrap 5 HTML/CSS pages only (no JS frameworks, no backend).
+
+Include mock data to visualize flow (employees, payslips, notices).
+
+Simulate UI responses (like calculator output or toast messages) without real logic.
+
+Maintain consistent black-and-green theme across all modules.
+
+🚀 Expected Outcome
+
+Deliver a fully responsive, Bootstrap-only UI prototype for HRMSWorld.com featuring:
+
+A Home Page with an interactive cost calculator (minimum 10 employees rule applied).
+
+Professional Company Login and Employee Login pages.
+
+Polished HRMS dashboards for attendance, leaves, workflows, and reimbursements.
+
+Black-and-green theme, white-label ready design, and mobile responsiveness.
+
+Clean, simple, and visually appealing — built entirely with Bootstrap.
