@@ -30,6 +30,7 @@ import AdminDashboard from "@/pages/admin-dashboard";
 import EmployeeDashboard from "@/pages/employee-dashboard";
 import Attendance from "@/pages/attendance";
 import Employees from "@/pages/employees";
+import EmployeesPage from "@/pages/organization/employees";
 import SettingsPage from "@/pages/settings";
 import CompanyInfoSettings from "@/pages/settings/company-info";
 import EmailSMTPSettings from "@/pages/settings/email-smtp";
@@ -39,6 +40,13 @@ import LiveLocation from "@/pages/monitoring/live-location";
 import Timeline from "@/pages/monitoring/timeline";
 import CardView from "@/pages/monitoring/card-view";
 import Lifecycle from "@/pages/lifecycle";
+import DepartmentsPage from "@/pages/organization/departments";
+import DesignationsPage from "@/pages/organization/designations";
+import RolesLevelsPage from "@/pages/organization/roles-levels";
+import ShiftsPage from "@/pages/masters/shifts";
+import HolidaysPage from "@/pages/masters/holidays";
+import LeaveTypesPage from "@/pages/masters/leave-types";
+import ExpenseTypesPage from "@/pages/masters/expense-types";
 
 function Router() {
   return (
@@ -149,6 +157,26 @@ function Router() {
           <Employees />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/admin/organization/employees">
+        <ProtectedRoute requireCompanyAdmin>
+          <EmployeesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/organization/departments">
+        <ProtectedRoute requireCompanyAdmin>
+          <DepartmentsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/organization/designations">
+        <ProtectedRoute requireCompanyAdmin>
+          <DesignationsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/organization/roles-levels">
+        <ProtectedRoute requireCompanyAdmin>
+          <RolesLevelsPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/admin/settings" component={SettingsPage} />
       <Route path="/dashboard/admin/settings/company-info" component={CompanyInfoSettings} />
       <Route path="/dashboard/admin/settings/email-smtp" component={EmailSMTPSettings} />
@@ -160,6 +188,26 @@ function Router() {
       <Route path="/dashboard/admin/lifecycle">
         <ProtectedRoute requireCompanyAdmin>
           <Lifecycle />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/masters/shifts">
+        <ProtectedRoute requireCompanyAdmin>
+          <ShiftsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/masters/holidays">
+        <ProtectedRoute requireCompanyAdmin>
+          <HolidaysPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/masters/leave-types">
+        <ProtectedRoute requireCompanyAdmin>
+          <LeaveTypesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/masters/expense-types">
+        <ProtectedRoute requireCompanyAdmin>
+          <ExpenseTypesPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

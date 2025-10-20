@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Clock, Umbrella, Workflow, 
   Receipt, Megaphone, FileText, UserPlus, Shield, 
   BarChart3, Settings, CalendarCheck, UserCheck,
-  Target, MapPin, Timer, LayoutGrid
+  Target, MapPin, Timer, LayoutGrid, Building2, Briefcase, Star
 } from "lucide-react";
 
 const menuItems = [
@@ -20,11 +20,30 @@ const menuItems = [
       { title: "Card View", url: "/dashboard/admin/monitoring/card-view" },
     ]
   },
-  { title: "Employees", url: "/dashboard/admin/employees", icon: Users },
+  { 
+    title: "Organization", 
+    icon: Building2,
+    subItems: [
+      { title: "Employees", url: "/dashboard/admin/organization/employees" },
+      { title: "Departments", url: "/dashboard/admin/organization/departments" },
+      { title: "Designations", url: "/dashboard/admin/organization/designations" },
+      { title: "Roles & Levels", url: "/dashboard/admin/organization/roles-levels" },
+    ]
+  },
   { title: "Attendance", url: "/dashboard/admin/attendance", icon: Clock },
   { title: "Leave", url: "/dashboard/admin/leave", icon: Umbrella },
   { title: "Workflows", url: "/dashboard/admin/workflows", icon: Workflow },
   { title: "Expenses", url: "/dashboard/admin/expenses", icon: Receipt },
+  { 
+    title: "Masters", 
+    icon: Star,
+    subItems: [
+      { title: "Shifts", url: "/dashboard/admin/masters/shifts" },
+      { title: "Holidays", url: "/dashboard/admin/masters/holidays" },
+      { title: "Leave Types", url: "/dashboard/admin/masters/leave-types" },
+      { title: "Expense Types", url: "/dashboard/admin/masters/expense-types" },
+    ]
+  },
   { title: "Noticeboard", url: "/dashboard/admin/noticeboard", icon: Megaphone },
   { title: "Payslips", url: "/dashboard/admin/payslips", icon: FileText },
   { title: "Lifecycle", url: "/dashboard/admin/lifecycle", icon: UserPlus },
