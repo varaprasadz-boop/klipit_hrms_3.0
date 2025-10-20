@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -8,11 +8,14 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, BarChart3, LogOut } from "lucide-react";
+import { Bell, BarChart3, LogOut, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   DropdownMenu,
@@ -21,19 +24,42 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+
+interface MenuItem {
+  title: string;
+  url?: string;
+  icon: any;
+  subItems?: Array<{
+    title: string;
+    url: string;
+  }>;
+}
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  menuItems: Array<{
-    title: string;
-    url: string;
-    icon: any;
-  }>;
+  menuItems: MenuItem[];
   userType: "admin" | "employee";
 }
 
 export default function DashboardLayout({ children, menuItems, userType }: DashboardLayoutProps) {
   const [location] = useLocation();
+  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+
+  const toggleItem = (title: string) => {
+    setOpenItems(prev => ({
+      ...prev,
+      [title]: !prev[title]
+    }));
+  };
+
+  const isItemActive = (item: MenuItem) => {
+    if (item.url && location === item.url) return true;
+    if (item.subItems) {
+      return item.subItems.some(subItem => location === subItem.url);
+    }
+    return false;
+  };
 
   return (
     <SidebarProvider>
@@ -54,14 +80,45 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild isActive={location === item.url}>
-                        <Link href={item.url}>
-                          <item.icon className="h-4 w-4" />
-                          <span>{item.title}</span>
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
+                    item.subItems ? (
+                      <Collapsible
+                        key={item.title}
+                        open={openItems[item.title] || isItemActive(item)}
+                        onOpenChange={() => toggleItem(item.title)}
+                      >
+                        <SidebarMenuItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuButton isActive={isItemActive(item)}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                              <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${openItems[item.title] || isItemActive(item) ? 'rotate-180' : ''}`} />
+                            </SidebarMenuButton>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <SidebarMenuSub>
+                              {item.subItems.map((subItem) => (
+                                <SidebarMenuSubItem key={subItem.title}>
+                                  <SidebarMenuSubButton asChild isActive={location === subItem.url}>
+                                    <Link href={subItem.url}>
+                                      <span>{subItem.title}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuItem>
+                      </Collapsible>
+                    ) : (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild isActive={location === item.url}>
+                          <Link href={item.url!}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    )
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>

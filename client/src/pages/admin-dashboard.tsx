@@ -20,7 +20,16 @@ const menuItems = [
   { title: "Lifecycle", url: "/dashboard/admin/lifecycle", icon: UserPlus },
   { title: "Roles", url: "/dashboard/admin/roles", icon: Shield },
   { title: "Reports", url: "/dashboard/admin/reports", icon: BarChart3 },
-  { title: "Settings", url: "/dashboard/admin/settings", icon: Settings },
+  { 
+    title: "Settings", 
+    icon: Settings,
+    subItems: [
+      { title: "Company Info", url: "/dashboard/admin/settings/company-info" },
+      { title: "Email SMTP", url: "/dashboard/admin/settings/email-smtp" },
+      { title: "Contact Info", url: "/dashboard/admin/settings/contact-info" },
+      { title: "Package Details", url: "/dashboard/admin/settings/package-details" },
+    ]
+  },
 ];
 
 export default function AdminDashboard() {

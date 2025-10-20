@@ -31,6 +31,10 @@ import EmployeeDashboard from "@/pages/employee-dashboard";
 import Attendance from "@/pages/attendance";
 import Employees from "@/pages/employees";
 import SettingsPage from "@/pages/settings";
+import CompanyInfoSettings from "@/pages/settings/company-info";
+import EmailSMTPSettings from "@/pages/settings/email-smtp";
+import ContactInfoSettings from "@/pages/settings/contact-info";
+import PackageDetailsSettings from "@/pages/settings/package-details";
 import Lifecycle from "@/pages/lifecycle";
 
 function Router() {
@@ -143,6 +147,10 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin/settings" component={SettingsPage} />
+      <Route path="/dashboard/admin/settings/company-info" component={CompanyInfoSettings} />
+      <Route path="/dashboard/admin/settings/email-smtp" component={EmailSMTPSettings} />
+      <Route path="/dashboard/admin/settings/contact-info" component={ContactInfoSettings} />
+      <Route path="/dashboard/admin/settings/package-details" component={PackageDetailsSettings} />
       <Route path="/dashboard/admin/lifecycle">
         <ProtectedRoute requireCompanyAdmin>
           <Lifecycle />
