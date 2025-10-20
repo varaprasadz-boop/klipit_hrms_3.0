@@ -93,10 +93,18 @@ export default function CompanyLogin() {
             <Button type="submit" className="w-full" disabled={loading} data-testid="button-login">
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              <a href="#" className="text-primary hover:underline">
-                Forgot password?
-              </a>
+            <div className="text-center text-sm text-muted-foreground space-y-2">
+              <div>
+                <a href="#" className="text-primary hover:underline">
+                  Forgot password?
+                </a>
+              </div>
+              <div className="pt-2 border-t">
+                <span>Don't have an account? </span>
+                <a href="/register/company" className="text-primary hover:underline font-medium" data-testid="link-register">
+                  Register here
+                </a>
+              </div>
             </div>
           </form>
         </CardContent>
