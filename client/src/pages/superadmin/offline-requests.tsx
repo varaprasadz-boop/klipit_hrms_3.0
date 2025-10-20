@@ -127,9 +127,9 @@ export default function OfflineRequestsPage() {
       
       setSelectedRequest(null);
       
-      // Redirect to company dashboard after a short delay
+      // Redirect to company admin dashboard after a short delay
       setTimeout(() => {
-        window.location.href = "/dashboard/company";
+        window.location.href = "/dashboard/admin";
       }, 2000);
     }
   };
