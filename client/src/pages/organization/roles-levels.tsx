@@ -124,7 +124,10 @@ export default function RolesLevelsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("/api/roles-levels", "POST", data),
+    mutationFn: async (data: FormData) => {
+      const res = await apiRequest("POST", "/api/roles-levels", data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles-levels"] });
       toast({
@@ -143,8 +146,10 @@ export default function RolesLevelsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
-      apiRequest(`/api/roles-levels/${id}`, "PUT", data),
+    mutationFn: async ({ id, data }: { id: string; data: FormData }) => {
+      const res = await apiRequest("PUT", `/api/roles-levels/${id}`, data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles-levels"] });
       toast({
@@ -164,7 +169,10 @@ export default function RolesLevelsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/roles-levels/${id}`, "DELETE"),
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/roles-levels/${id}`);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/roles-levels"] });
       toast({

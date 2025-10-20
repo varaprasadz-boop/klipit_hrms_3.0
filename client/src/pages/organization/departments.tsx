@@ -125,7 +125,10 @@ export default function DepartmentsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("/api/departments", "POST", data),
+    mutationFn: async (data: FormData) => {
+      const res = await apiRequest("POST", "/api/departments", data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({
@@ -144,8 +147,10 @@ export default function DepartmentsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
-      apiRequest(`/api/departments/${id}`, "PUT", data),
+    mutationFn: async ({ id, data }: { id: string; data: FormData }) => {
+      const res = await apiRequest("PUT", `/api/departments/${id}`, data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({
@@ -165,7 +170,10 @@ export default function DepartmentsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/departments/${id}`, "DELETE"),
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/departments/${id}`);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/departments"] });
       toast({

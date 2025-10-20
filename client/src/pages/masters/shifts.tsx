@@ -131,7 +131,10 @@ export default function ShiftsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("/api/shifts", "POST", data),
+    mutationFn: async (data: FormData) => {
+      const res = await apiRequest("POST", "/api/shifts", data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       toast({
@@ -150,8 +153,10 @@ export default function ShiftsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
-      apiRequest(`/api/shifts/${id}`, "PUT", data),
+    mutationFn: async ({ id, data }: { id: string; data: FormData }) => {
+      const res = await apiRequest("PUT", `/api/shifts/${id}`, data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       toast({
@@ -171,7 +176,10 @@ export default function ShiftsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/shifts/${id}`, "DELETE"),
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/shifts/${id}`);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/shifts"] });
       toast({

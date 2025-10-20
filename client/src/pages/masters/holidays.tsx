@@ -127,7 +127,10 @@ export default function HolidaysPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => apiRequest("/api/holidays", "POST", data),
+    mutationFn: async (data: FormData) => {
+      const res = await apiRequest("POST", "/api/holidays", data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       toast({
@@ -146,8 +149,10 @@ export default function HolidaysPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FormData }) =>
-      apiRequest(`/api/holidays/${id}`, "PUT", data),
+    mutationFn: async ({ id, data }: { id: string; data: FormData }) => {
+      const res = await apiRequest("PUT", `/api/holidays/${id}`, data);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       toast({
@@ -167,7 +172,10 @@ export default function HolidaysPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/holidays/${id}`, "DELETE"),
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/holidays/${id}`);
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
       toast({
