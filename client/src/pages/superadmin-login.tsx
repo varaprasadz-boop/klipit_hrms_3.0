@@ -4,12 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { User, Lock } from "lucide-react";
+import { Shield, Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
-export default function EmployeeLogin() {
+export default function SuperAdminLogin() {
   const [, setLocation] = useLocation();
   const { login } = useAuth();
   const { toast } = useToast();
@@ -25,10 +25,10 @@ export default function EmployeeLogin() {
       const response = await apiRequest("POST", "/api/auth/login", { email, password });
       const data = await response.json();
 
-      if (data.user.role !== "EMPLOYEE") {
+      if (data.user.role !== "SUPER_ADMIN") {
         toast({
           title: "Access denied",
-          description: "Please use the correct login portal",
+          description: "Only super admins can access this area",
           variant: "destructive",
         });
         return;
@@ -36,7 +36,7 @@ export default function EmployeeLogin() {
 
       login(data.user, data.token);
       toast({ title: "Login successful" });
-      setLocation("/dashboard/employee");
+      setLocation("/superadmin");
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -53,25 +53,27 @@ export default function EmployeeLogin() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <User className="h-12 w-12 text-primary" />
+            <Shield className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl text-center">Employee Login</CardTitle>
+          <CardTitle className="text-2xl text-center">
+            Super Admin Login
+          </CardTitle>
           <CardDescription className="text-center">
-            Access your employee portal
+            Access the super administrator dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Employee Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="employee@company.com"
+                placeholder="superadmin@hrmsworld.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                data-testid="input-email"
+                data-testid="input-superadmin-email"
               />
             </div>
             <div className="space-y-2">
@@ -86,18 +88,13 @@ export default function EmployeeLogin() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  data-testid="input-password"
+                  data-testid="input-superadmin-password"
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full" disabled={loading} data-testid="button-login">
+            <Button type="submit" className="w-full" disabled={loading} data-testid="button-superadmin-login">
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-            <div className="text-center text-sm text-muted-foreground">
-              <a href="#" className="text-primary hover:underline">
-                Forgot password?
-              </a>
-            </div>
           </form>
         </CardContent>
       </Card>

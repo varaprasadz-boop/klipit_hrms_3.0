@@ -27,7 +27,7 @@ export default function Home() {
             <BarChart3 className="h-6 w-6 text-primary" />
             <h1 className="text-xl font-bold">HRMSWorld</h1>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Link href="/login/company">
               <Button variant="outline" data-testid="link-company-login">Company Login</Button>
             </Link>
@@ -103,6 +103,13 @@ export default function Home() {
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>&copy; 2024 HRMSWorld.com - All rights reserved</p>
+          <div className="mt-4">
+            <Link href="/login/superadmin">
+              <Button variant="ghost" size="sm" className="text-muted-foreground" data-testid="link-superadmin">
+                Super Admin Access
+              </Button>
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
