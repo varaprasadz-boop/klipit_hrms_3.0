@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, boolean, jsonb, date, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -49,3 +49,261 @@ export const UserRole = {
 } as const;
 
 export type UserRoleType = typeof UserRole[keyof typeof UserRole];
+
+// Departments
+export const departments = pgTable("departments", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDepartmentSchema = createInsertSchema(departments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDepartment = z.infer<typeof insertDepartmentSchema>;
+export type Department = typeof departments.$inferSelect;
+
+// Designations
+export const designations = pgTable("designations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertDesignationSchema = createInsertSchema(designations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertDesignation = z.infer<typeof insertDesignationSchema>;
+export type Designation = typeof designations.$inferSelect;
+
+// Roles & Levels
+export const rolesLevels = pgTable("roles_levels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  role: text("role").notNull(),
+  level: text("level").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRoleLevelSchema = createInsertSchema(rolesLevels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertRoleLevel = z.infer<typeof insertRoleLevelSchema>;
+export type RoleLevel = typeof rolesLevels.$inferSelect;
+
+// Education, Experience, Documents, CTC, Assets, Bank, Insurance, Statutory schemas
+export const educationSchema = z.object({
+  degree: z.string(),
+  institution: z.string(),
+  year: z.string(),
+  grade: z.string().optional(),
+});
+
+export const experienceSchema = z.object({
+  company: z.string(),
+  position: z.string(),
+  startDate: z.string(),
+  endDate: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const documentSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  size: z.number(),
+  url: z.string(),
+  uploadedAt: z.string(),
+});
+
+export const ctcComponentSchema = z.object({
+  component: z.string(),
+  amount: z.number(),
+  frequency: z.string(),
+});
+
+export const assetSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  serialNumber: z.string().optional(),
+  assignedDate: z.string(),
+  returnDate: z.string().optional(),
+});
+
+export const bankInfoSchema = z.object({
+  accountNumber: z.string(),
+  bankName: z.string(),
+  ifscCode: z.string(),
+  accountHolderName: z.string(),
+});
+
+export const insuranceInfoSchema = z.object({
+  provider: z.string(),
+  policyNumber: z.string(),
+  coverageAmount: z.number(),
+  startDate: z.string(),
+  endDate: z.string(),
+});
+
+export const statutoryInfoSchema = z.object({
+  panNumber: z.string().optional(),
+  aadharNumber: z.string().optional(),
+  pfNumber: z.string().optional(),
+  esiNumber: z.string().optional(),
+  uanNumber: z.string().optional(),
+});
+
+// Employees
+export const employees = pgTable("employees", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  departmentId: varchar("department_id").references(() => departments.id),
+  designationId: varchar("designation_id").references(() => designations.id),
+  roleLevelId: varchar("role_level_id").references(() => rolesLevels.id),
+  status: text("status").notNull().default("active"),
+  joinDate: date("join_date").notNull(),
+  exitDate: date("exit_date"),
+  attendanceType: text("attendance_type").default("regular"),
+  education: jsonb("education").$type<z.infer<typeof educationSchema>[]>().default([]),
+  experience: jsonb("experience").$type<z.infer<typeof experienceSchema>[]>().default([]),
+  documents: jsonb("documents").$type<z.infer<typeof documentSchema>[]>().default([]),
+  ctc: jsonb("ctc").$type<z.infer<typeof ctcComponentSchema>[]>().default([]),
+  assets: jsonb("assets").$type<z.infer<typeof assetSchema>[]>().default([]),
+  bank: jsonb("bank").$type<z.infer<typeof bankInfoSchema>>(),
+  insurance: jsonb("insurance").$type<z.infer<typeof insuranceInfoSchema>>(),
+  statutory: jsonb("statutory").$type<z.infer<typeof statutoryInfoSchema>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertEmployeeSchema = createInsertSchema(employees).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  education: z.array(educationSchema).optional(),
+  experience: z.array(experienceSchema).optional(),
+  documents: z.array(documentSchema).optional(),
+  ctc: z.array(ctcComponentSchema).optional(),
+  assets: z.array(assetSchema).optional(),
+  bank: bankInfoSchema.optional(),
+  insurance: insuranceInfoSchema.optional(),
+  statutory: statutoryInfoSchema.optional(),
+});
+
+export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
+export type Employee = typeof employees.$inferSelect;
+
+// Shifts
+export const shifts = pgTable("shifts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  name: text("name").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  weeklyOffs: jsonb("weekly_offs").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertShiftSchema = createInsertSchema(shifts).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  weeklyOffs: z.array(z.string()).optional(),
+});
+
+export type InsertShift = z.infer<typeof insertShiftSchema>;
+export type Shift = typeof shifts.$inferSelect;
+
+// Attendance Records
+export const attendanceRecords = pgTable("attendance_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  date: date("date").notNull(),
+  checkIn: timestamp("check_in"),
+  checkOut: timestamp("check_out"),
+  shiftId: varchar("shift_id").references(() => shifts.id),
+  status: text("status").notNull().default("pending"),
+  duration: integer("duration"),
+  location: text("location"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAttendanceRecordSchema = createInsertSchema(attendanceRecords).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAttendanceRecord = z.infer<typeof insertAttendanceRecordSchema>;
+export type AttendanceRecord = typeof attendanceRecords.$inferSelect;
+
+// Holidays
+export const holidays = pgTable("holidays", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  date: date("date").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  departmentIds: jsonb("department_ids").$type<string[]>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertHolidaySchema = createInsertSchema(holidays).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  departmentIds: z.array(z.string()).optional(),
+});
+
+export type InsertHoliday = z.infer<typeof insertHolidaySchema>;
+export type Holiday = typeof holidays.$inferSelect;
+
+// Leave Types
+export const leaveTypes = pgTable("leave_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  maxDays: integer("max_days"),
+  carryForward: boolean("carry_forward").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertLeaveTypeSchema = createInsertSchema(leaveTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertLeaveType = z.infer<typeof insertLeaveTypeSchema>;
+export type LeaveType = typeof leaveTypes.$inferSelect;
+
+// Expense Types
+export const expenseTypes = pgTable("expense_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  code: text("code").notNull(),
+  name: text("name").notNull(),
+  requiresReceipt: boolean("requires_receipt").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExpenseTypeSchema = createInsertSchema(expenseTypes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertExpenseType = z.infer<typeof insertExpenseTypeSchema>;
+export type ExpenseType = typeof expenseTypes.$inferSelect;
