@@ -3,10 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Users, Clock, Umbrella, Workflow, Receipt, Megaphone, FileText, UserPlus, Shield, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Clock, Umbrella, Workflow, Receipt, Megaphone, FileText, UserPlus, Shield, BarChart3, Settings, Target } from "lucide-react";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard/admin", icon: LayoutDashboard },
+  { 
+    title: "Monitoring", 
+    icon: Target,
+    subItems: [
+      { title: "Live Location", url: "/dashboard/admin/monitoring/live-location" },
+      { title: "Time Line", url: "/dashboard/admin/monitoring/timeline" },
+      { title: "Card View", url: "/dashboard/admin/monitoring/card-view" },
+    ]
+  },
   { title: "Employees", url: "/dashboard/admin/employees", icon: Users },
   { title: "Attendance", url: "/dashboard/admin/attendance", icon: Clock },
   { title: "Leave", url: "/dashboard/admin/leave", icon: Umbrella },
