@@ -112,7 +112,7 @@ export default function RegisterCompany() {
                 <Button 
                   variant="outline" 
                   className="w-full"
-                  onClick={() => setLocation("/dashboard/admin")}
+                  onClick={() => setLocation("/waiting-approval")}
                   data-testid="button-go-dashboard"
                 >
                   Go to Dashboard
