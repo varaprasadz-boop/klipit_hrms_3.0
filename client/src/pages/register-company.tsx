@@ -55,6 +55,9 @@ export default function RegisterCompany() {
     setLoading(true);
 
     try {
+      // Store email for future use
+      localStorage.setItem("registrationEmail", formData.email);
+      
       // TODO: Connect to actual registration API
       await new Promise(resolve => setTimeout(resolve, 1000));
       

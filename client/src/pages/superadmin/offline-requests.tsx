@@ -116,11 +116,21 @@ export default function OfflineRequestsPage() {
           ? { ...req, status: "approved" as const, orderId: String(Math.floor(Math.random() * 1000)) }
           : req
       ));
+      
+      // Store the company email for the dashboard
+      localStorage.setItem("companyEmail", selectedRequest.user.email);
+      
       toast({
         title: "Request Approved",
-        description: `Offline payment request for ${selectedRequest.user.name} has been approved.`,
+        description: `Offline payment request for ${selectedRequest.user.name} has been approved. Redirecting to company dashboard...`,
       });
+      
       setSelectedRequest(null);
+      
+      // Redirect to company dashboard after a short delay
+      setTimeout(() => {
+        window.location.href = "/dashboard/company";
+      }, 2000);
     }
   };
 
