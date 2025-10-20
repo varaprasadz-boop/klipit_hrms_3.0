@@ -35,6 +35,7 @@ const planFeatures = [
 export default function WaitingApproval() {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [additionalUsers, setAdditionalUsers] = useState(6);
+  const [showOfflinePending, setShowOfflinePending] = useState(false);
   const { toast } = useToast();
 
   const basePrice = 50;
@@ -42,12 +43,22 @@ export default function WaitingApproval() {
   const includedUsers = 1;
   const totalPrice = basePrice + (additionalUsers * pricePerUser);
 
-  const handlePayOffline = () => {
+  const handlePayOnline = () => {
     toast({
-      title: "Payment Request Submitted",
-      description: "Your offline payment request has been submitted. Please wait for admin approval.",
+      title: "Payment Successful",
+      description: "Your payment has been processed successfully!",
     });
     setShowPaymentDialog(false);
+    // TODO: Redirect to order history page
+  };
+
+  const handlePayOffline = () => {
+    setShowOfflinePending(true);
+    setShowPaymentDialog(false);
+    toast({
+      title: "Offline Payment Request Submitted",
+      description: "Your request has been submitted and is pending approval.",
+    });
   };
 
   return (
@@ -55,14 +66,32 @@ export default function WaitingApproval() {
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <div className="flex gap-4 mb-6 text-sm">
-            <a href="#" className="text-primary font-medium">Dashboard</a>
+            <a href="#" className="text-primary font-medium border-b-2 border-primary pb-1">Dashboard</a>
             <a href="#" className="text-muted-foreground hover:text-foreground">Order History</a>
-            <a href="#" className="text-muted-foreground hover:text-foreground">Offline Requests</a>
+            <a href="#" className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+              Offline Requests
+              {showOfflinePending && (
+                <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded">1</span>
+              )}
+            </a>
             <a href="#" className="text-muted-foreground hover:text-foreground">Domain Requests</a>
           </div>
           
           <h1 className="text-2xl font-bold mb-2">Welcome to the Klipit HRMS WORLD 👍</h1>
         </div>
+
+        {showOfflinePending && (
+          <Card className="mb-6 bg-cyan-50 border-cyan-200">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold text-cyan-900">Offline Request Pending!</h2>
+                <p className="text-cyan-800">
+                  Your offline request is pending approval. You will be notified once it is approved.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6 bg-yellow-50 border-yellow-200">
           <CardContent className="pt-6">
@@ -187,20 +216,29 @@ export default function WaitingApproval() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  variant="outline"
+                  onClick={handlePayOnline}
+                  data-testid="button-pay-online"
+                >
+                  Pay Online
+                </Button>
+                <Button 
+                  className="bg-cyan-500 hover:bg-cyan-600" 
+                  onClick={handlePayOffline}
+                  data-testid="button-pay-offline"
+                >
+                  Pay Offline
+                </Button>
+              </div>
+
               <div className="bg-muted/50 p-4 rounded-md text-sm">
                 <p className="text-muted-foreground">
-                  Please make your payment to the following bank account number:{" "}
+                  For offline payment, please make your payment to the following bank account number:{" "}
                   <span className="font-medium text-foreground">1234567890</span>
                 </p>
               </div>
-
-              <Button 
-                className="w-full bg-cyan-500 hover:bg-cyan-600" 
-                onClick={handlePayOffline}
-                data-testid="button-pay-offline"
-              >
-                Pay Offline
-              </Button>
             </div>
           </DialogContent>
         </Dialog>
