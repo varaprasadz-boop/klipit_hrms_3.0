@@ -142,11 +142,7 @@ function Router() {
           <Employees />
         </ProtectedRoute>
       </Route>
-      <Route path="/dashboard/admin/settings">
-        <ProtectedRoute requireCompanyAdmin>
-          <SettingsPage />
-        </ProtectedRoute>
-      </Route>
+      <Route path="/dashboard/admin/settings" component={SettingsPage} />
       <Route path="/dashboard/admin/lifecycle">
         <ProtectedRoute requireCompanyAdmin>
           <Lifecycle />
