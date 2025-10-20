@@ -226,6 +226,14 @@ export default function DesignationsPage() {
     form.reset({ name: "", description: "" });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingDesignation(null);
+      form.reset({ name: "", description: "" });
+    }
+  };
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -234,7 +242,7 @@ export default function DesignationsPage() {
             <h2 className="text-3xl font-bold mb-1">Designations</h2>
             <p className="text-muted-foreground">Manage job titles and designations</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-designation">
                 <Plus className="h-4 w-4 mr-2" />

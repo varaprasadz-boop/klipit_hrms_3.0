@@ -230,6 +230,14 @@ export default function HolidaysPage() {
     form.reset({ date: "", name: "", description: "" });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingHoliday(null);
+      form.reset({ date: "", name: "", description: "" });
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "PPP");
@@ -246,7 +254,7 @@ export default function HolidaysPage() {
             <h2 className="text-3xl font-bold mb-1">Holidays</h2>
             <p className="text-muted-foreground">Manage company holidays and observances</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-holiday">
                 <Plus className="h-4 w-4 mr-2" />

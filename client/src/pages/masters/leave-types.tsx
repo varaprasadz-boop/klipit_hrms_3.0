@@ -239,6 +239,14 @@ export default function LeaveTypesPage() {
     form.reset({ code: "", name: "", maxDays: null, carryForward: false });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingLeaveType(null);
+      form.reset({ code: "", name: "", maxDays: null, carryForward: false });
+    }
+  };
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -247,7 +255,7 @@ export default function LeaveTypesPage() {
             <h2 className="text-3xl font-bold mb-1">Leave Types</h2>
             <p className="text-muted-foreground">Manage different types of leave</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-leave-type">
                 <Plus className="h-4 w-4 mr-2" />

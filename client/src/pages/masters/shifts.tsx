@@ -236,6 +236,14 @@ export default function ShiftsPage() {
     form.reset({ name: "", startTime: "", endTime: "", weeklyOffs: [] });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingShift(null);
+      form.reset({ name: "", startTime: "", endTime: "", weeklyOffs: [] });
+    }
+  };
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -244,7 +252,7 @@ export default function ShiftsPage() {
             <h2 className="text-3xl font-bold mb-1">Shifts</h2>
             <p className="text-muted-foreground">Manage work shifts and schedules</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-shift">
                 <Plus className="h-4 w-4 mr-2" />

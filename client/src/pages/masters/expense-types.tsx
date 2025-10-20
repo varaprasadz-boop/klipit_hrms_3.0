@@ -231,6 +231,14 @@ export default function ExpenseTypesPage() {
     form.reset({ code: "", name: "", requiresReceipt: false });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingExpenseType(null);
+      form.reset({ code: "", name: "", requiresReceipt: false });
+    }
+  };
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -239,7 +247,7 @@ export default function ExpenseTypesPage() {
             <h2 className="text-3xl font-bold mb-1">Expense Types</h2>
             <p className="text-muted-foreground">Manage different types of expenses</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-expense-type">
                 <Plus className="h-4 w-4 mr-2" />

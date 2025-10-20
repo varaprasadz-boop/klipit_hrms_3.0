@@ -225,6 +225,14 @@ export default function RolesLevelsPage() {
     form.reset({ role: "", level: "" });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingRoleLevel(null);
+      form.reset({ role: "", level: "" });
+    }
+  };
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -233,7 +241,7 @@ export default function RolesLevelsPage() {
             <h2 className="text-3xl font-bold mb-1">Roles & Levels</h2>
             <p className="text-muted-foreground">Define role hierarchies and career levels</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+          <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
               <Button data-testid="button-add-role-level">
                 <Plus className="h-4 w-4 mr-2" />
