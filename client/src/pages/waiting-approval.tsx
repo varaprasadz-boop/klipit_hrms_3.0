@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Check, X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Check, X, Minus, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const planFeatures = [
   { name: "Included Users", value: "Upto 1 User", included: true },
@@ -30,6 +33,23 @@ const planFeatures = [
 ];
 
 export default function WaitingApproval() {
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [additionalUsers, setAdditionalUsers] = useState(6);
+  const { toast } = useToast();
+
+  const basePrice = 50;
+  const pricePerUser = 30;
+  const includedUsers = 1;
+  const totalPrice = basePrice + (additionalUsers * pricePerUser);
+
+  const handlePayOffline = () => {
+    toast({
+      title: "Payment Request Submitted",
+      description: "Your offline payment request has been submitted. Please wait for admin approval.",
+    });
+    setShowPaymentDialog(false);
+  };
+
   return (
     <div className="min-h-screen bg-muted/20 p-4">
       <div className="max-w-6xl mx-auto">
@@ -93,13 +113,97 @@ export default function WaitingApproval() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button className="w-full bg-green-600 hover:bg-green-700" data-testid="button-subscribe">
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700" 
+                  onClick={() => setShowPaymentDialog(true)}
+                  data-testid="button-subscribe"
+                >
                   Subscribe
                 </Button>
               </CardFooter>
             </Card>
           </div>
         </div>
+
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Choose Payment Method</DialogTitle>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Plan:</span>
+                  <span className="font-medium">Basic</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Base Price:</span>
+                  <span className="font-medium">₹{basePrice}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Price Per User:</span>
+                  <span className="font-medium">₹{pricePerUser}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Included Users:</span>
+                  <span className="font-medium">{includedUsers}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground block mb-2">
+                  Number of Additional Users
+                </label>
+                <div className="flex items-center gap-0">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAdditionalUsers(Math.max(0, additionalUsers - 1))}
+                    className="rounded-r-none"
+                    data-testid="button-decrease-users"
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <div className="flex-1 h-9 flex items-center justify-center border-y bg-background text-center font-medium">
+                    {additionalUsers}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setAdditionalUsers(additionalUsers + 1)}
+                    className="rounded-l-none"
+                    data-testid="button-increase-users"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t">
+                <div className="text-lg">
+                  <span className="text-muted-foreground mr-2">Total Price:</span>
+                  <span className="font-bold">₹{totalPrice.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="bg-muted/50 p-4 rounded-md text-sm">
+                <p className="text-muted-foreground">
+                  Please make your payment to the following bank account number:{" "}
+                  <span className="font-medium text-foreground">1234567890</span>
+                </p>
+              </div>
+
+              <Button 
+                className="w-full bg-cyan-500 hover:bg-cyan-600" 
+                onClick={handlePayOffline}
+                data-testid="button-pay-offline"
+              >
+                Pay Offline
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
