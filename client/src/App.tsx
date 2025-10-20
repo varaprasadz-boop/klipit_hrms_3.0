@@ -6,12 +6,23 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import SuperAdminFooter from "@/components/SuperAdminFooter";
+import SuperAdminLayout from "@/components/SuperAdminLayout";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import CompanyLogin from "@/pages/login-company";
 import EmployeeLogin from "@/pages/login-employee";
 import SuperAdminLogin from "@/pages/superadmin-login";
-import SuperAdminDashboard from "@/pages/superadmin-dashboard";
+import SuperAdminDashboardPage from "@/pages/superadmin/dashboard";
+import CustomersPage from "@/pages/superadmin/customers";
+import DomainRequestsPage from "@/pages/superadmin/domain-requests";
+import OfflineRequestsPage from "@/pages/superadmin/offline-requests";
+import OrdersPage from "@/pages/superadmin/orders";
+import PlansPage from "@/pages/superadmin/plans";
+import UsersPage from "@/pages/superadmin/users";
+import AddonsPage from "@/pages/superadmin/addons";
+import SupportPage from "@/pages/superadmin/support";
+import SuperAdminSettingsPage from "@/pages/superadmin/settings";
+import AuditLogsPage from "@/pages/superadmin/audit-logs";
 import AdminDashboard from "@/pages/admin-dashboard";
 import EmployeeDashboard from "@/pages/employee-dashboard";
 import Attendance from "@/pages/attendance";
@@ -26,9 +37,82 @@ function Router() {
       <Route path="/login/company" component={CompanyLogin} />
       <Route path="/login/employee" component={EmployeeLogin} />
       <Route path="/login/superadmin" component={SuperAdminLogin} />
+      
       <Route path="/superadmin">
         <ProtectedRoute requireSuperAdmin>
-          <SuperAdminDashboard />
+          <SuperAdminLayout>
+            <SuperAdminDashboardPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/customers">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <CustomersPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/domain-requests">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <DomainRequestsPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/offline-requests">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <OfflineRequestsPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/orders">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <OrdersPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/plans">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <PlansPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/users">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <UsersPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/addons">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <AddonsPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/support">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <SupportPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/settings">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <SuperAdminSettingsPage />
+          </SuperAdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/superadmin/audit-logs">
+        <ProtectedRoute requireSuperAdmin>
+          <SuperAdminLayout>
+            <AuditLogsPage />
+          </SuperAdminLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin">
