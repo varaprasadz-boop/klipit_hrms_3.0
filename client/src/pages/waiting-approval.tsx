@@ -65,16 +65,16 @@ export default function WaitingApproval() {
     <div className="min-h-screen bg-muted/20 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
-          <div className="flex gap-4 mb-6 text-sm">
-            <a href="#" className="text-primary font-medium border-b-2 border-primary pb-1">Dashboard</a>
-            <a href="#" className="text-muted-foreground hover:text-foreground">Order History</a>
-            <a href="#" className="text-muted-foreground hover:text-foreground flex items-center gap-1">
+          <div className="flex gap-4 mb-6 text-sm border-b">
+            <a href="/waiting-approval" className="text-primary font-medium border-b-2 border-primary pb-2">Dashboard</a>
+            <a href="#" className="text-muted-foreground hover:text-foreground pb-2">Order History</a>
+            <a href="/offline-requests" className="text-muted-foreground hover:text-foreground flex items-center gap-1 pb-2">
               Offline Requests
               {showOfflinePending && (
                 <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded">1</span>
               )}
             </a>
-            <a href="#" className="text-muted-foreground hover:text-foreground">Domain Requests</a>
+            <a href="#" className="text-muted-foreground hover:text-foreground pb-2">Domain Requests</a>
           </div>
           
           <h1 className="text-2xl font-bold mb-2">Welcome to the Klipit HRMS WORLD 👍</h1>

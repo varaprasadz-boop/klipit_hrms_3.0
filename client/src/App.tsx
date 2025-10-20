@@ -14,6 +14,7 @@ import EmployeeLogin from "@/pages/login-employee";
 import SuperAdminLogin from "@/pages/superadmin-login";
 import RegisterCompany from "@/pages/register-company";
 import WaitingApproval from "@/pages/waiting-approval";
+import OfflineRequests from "@/pages/offline-requests";
 import SuperAdminDashboardPage from "@/pages/superadmin/dashboard";
 import CustomersPage from "@/pages/superadmin/customers";
 import DomainRequestsPage from "@/pages/superadmin/domain-requests";
@@ -41,6 +42,7 @@ function Router() {
       <Route path="/login/superadmin" component={SuperAdminLogin} />
       <Route path="/register/company" component={RegisterCompany} />
       <Route path="/waiting-approval" component={WaitingApproval} />
+      <Route path="/offline-requests" component={OfflineRequests} />
       
       <Route path="/superadmin">
         <ProtectedRoute requireSuperAdmin>
