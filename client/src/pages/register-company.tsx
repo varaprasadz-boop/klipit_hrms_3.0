@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Globe, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function RegisterCompany() {
@@ -15,6 +16,7 @@ export default function RegisterCompany() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -53,14 +55,10 @@ export default function RegisterCompany() {
     setLoading(true);
 
     try {
-      toast({
-        title: "Registration successful",
-        description: "Your account has been created successfully!",
-      });
+      // TODO: Connect to actual registration API
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setTimeout(() => {
-        setLocation("/login/company");
-      }, 2000);
+      setShowVerification(true);
     } catch (error: any) {
       toast({
         title: "Registration failed",
@@ -71,6 +69,69 @@ export default function RegisterCompany() {
       setLoading(false);
     }
   };
+
+  const handleResendEmail = () => {
+    toast({
+      title: "Email sent",
+      description: "Verification email has been resent to " + formData.email,
+    });
+  };
+
+  if (showVerification) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/20">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              <div className="flex justify-center">
+                <Globe className="h-12 w-12 text-primary" />
+              </div>
+              
+              <h1 className="text-2xl font-bold">Klipit HRMS WORLD</h1>
+              
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold flex items-center justify-center gap-2">
+                  Verify your email <Mail className="h-5 w-5" />
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Account activation link sent to your email address:{" "}
+                  <span className="font-medium text-foreground">{formData.email}</span>{" "}
+                  Please follow the link inside to continue.
+                </p>
+              </div>
+
+              <Button 
+                className="w-full" 
+                onClick={handleResendEmail}
+                data-testid="button-resend-email"
+              >
+                Resend verification email
+              </Button>
+
+              <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => setLocation("/dashboard/admin")}
+                  data-testid="button-go-dashboard"
+                >
+                  Go to Dashboard
+                </Button>
+                
+                <button
+                  onClick={() => setLocation("/")}
+                  className="text-sm text-primary hover:underline"
+                  data-testid="link-logout"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
