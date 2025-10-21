@@ -3,10 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const mockOrders = [
-  { id: "ORD-001", customer: "Tech Solutions Inc", plan: "Premium", amount: "$299", status: "completed", date: "2024-10-19" },
-  { id: "ORD-002", customer: "Marketing Pro Ltd", plan: "Basic", amount: "$99", status: "completed", date: "2024-10-18" },
-  { id: "ORD-003", customer: "Startup Hub", plan: "Enterprise", amount: "$599", status: "pending", date: "2024-10-17" },
-  { id: "ORD-004", customer: "Design Studio", plan: "Premium", amount: "$299", status: "processing", date: "2024-10-16" },
+  { id: "ORD-001", customer: "Tech Solutions Inc", plan: "Premium", amount: "₹299", status: "completed", date: "2024-10-19" },
+  { id: "ORD-002", customer: "Marketing Pro Ltd", plan: "Basic", amount: "₹99", status: "completed", date: "2024-10-18" },
+  { id: "ORD-003", customer: "Startup Hub", plan: "Enterprise", amount: "₹599", status: "pending", date: "2024-10-17" },
+  { id: "ORD-004", customer: "Design Studio", plan: "Premium", amount: "₹299", status: "processing", date: "2024-10-16" },
 ];
 
 export default function OrdersPage() {

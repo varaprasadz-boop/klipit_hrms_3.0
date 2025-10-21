@@ -226,14 +226,14 @@ export default function PlansPage() {
               </div>
               <div className="mt-4 space-y-1">
                 <div>
-                  <span className="text-3xl font-bold">${plan.baseCost}</span>
+                  <span className="text-3xl font-bold">₹{plan.baseCost}</span>
                   <span className="text-muted-foreground text-sm ml-2">/month</span>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Includes up to {plan.minEmployees} employees
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  + ${plan.perEmployeeCost} per additional employee
+                  + ₹{plan.perEmployeeCost} per additional employee
                 </p>
               </div>
             </CardHeader>
@@ -320,7 +320,7 @@ export default function PlansPage() {
               <h3 className="text-lg font-semibold mb-4">Pricing Structure</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="baseCost">Base Monthly Cost ($) *</Label>
+                  <Label htmlFor="baseCost">Base Monthly Cost (₹) *</Label>
                   <Input
                     id="baseCost"
                     type="number"
@@ -342,7 +342,7 @@ export default function PlansPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="perEmployeeCost">Per Employee Cost ($) *</Label>
+                  <Label htmlFor="perEmployeeCost">Per Employee Cost (₹) *</Label>
                   <Input
                     id="perEmployeeCost"
                     type="number"
@@ -357,10 +357,10 @@ export default function PlansPage() {
                 <div className="mt-3 p-3 bg-muted rounded-md">
                   <p className="text-sm font-medium">Pricing Example:</p>
                   <p className="text-sm text-muted-foreground">
-                    ${formData.baseCost}/month (up to {formData.minEmployees} employees) + ${formData.perEmployeeCost} per additional employee
+                    ₹{formData.baseCost}/month (up to {formData.minEmployees} employees) + ₹{formData.perEmployeeCost} per additional employee
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    For 50 employees: ${Number(formData.baseCost) + (Math.max(0, 50 - Number(formData.minEmployees)) * Number(formData.perEmployeeCost))}/month
+                    For 50 employees: ₹{Number(formData.baseCost) + (Math.max(0, 50 - Number(formData.minEmployees)) * Number(formData.perEmployeeCost))}/month
                   </p>
                 </div>
               )}

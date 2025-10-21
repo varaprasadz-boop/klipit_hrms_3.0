@@ -41,7 +41,7 @@ export default function SuperAdminDashboardPage() {
         />
         <StatsCard
           title="Revenue"
-          value="$24,500"
+          value="₹24,500"
           icon={TrendingUp}
           description="This month"
           trend={{ value: "+12.5%", positive: true }}
