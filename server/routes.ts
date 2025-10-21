@@ -14,6 +14,10 @@ import {
   insertHolidaySchema,
   insertLeaveTypeSchema,
   insertExpenseTypeSchema,
+  insertExpenseClaimSchema,
+  updateExpenseClaimSchema,
+  insertExpenseClaimItemSchema,
+  type ExpenseClaim,
   UserRole 
 } from "@shared/schema";
 import { 
@@ -1640,6 +1644,502 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error("Delete expense type error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== EXPENSE CLAIMS ====================
+  app.get("/api/expense-claims", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { employeeId, status, view } = req.query;
+      
+      let claims: ExpenseClaim[] = [];
+      
+      // Determine which claims to fetch based on user role and view parameter
+      if (view === "manager") {
+        // Manager view: Get claims of employees reporting to this user
+        const user = await storage.getUser(session.userId);
+        if (!user || !user.employeeId) {
+          return res.status(400).json({ error: "User has no associated employee record" });
+        }
+        claims = await storage.getExpenseClaimsByManager(user.employeeId);
+      } else if (view === "employee" || employeeId) {
+        // Employee view: Get own claims only
+        const user = await storage.getUser(session.userId);
+        if (!user || !user.employeeId) {
+          return res.status(400).json({ error: "User has no associated employee record" });
+        }
+        
+        // Security: Only allow viewing own claims unless company admin
+        const targetEmployeeId = employeeId as string;
+        if (targetEmployeeId && targetEmployeeId !== user.employeeId && session.role !== "COMPANY_ADMIN") {
+          return res.status(403).json({ error: "Not authorized to view other employees' claims" });
+        }
+        
+        claims = await storage.getExpenseClaimsByEmployee(targetEmployeeId || user.employeeId);
+      } else if (session.role === "COMPANY_ADMIN" || session.role === "SUPER_ADMIN") {
+        // Admin view: Get all company claims
+        claims = await storage.getExpenseClaimsByCompany(session.companyId);
+      } else {
+        // Default to own claims for regular employees
+        const user = await storage.getUser(session.userId);
+        if (!user || !user.employeeId) {
+          return res.status(400).json({ error: "User has no associated employee record" });
+        }
+        claims = await storage.getExpenseClaimsByEmployee(user.employeeId);
+      }
+
+      // Security: Filter by company ID to prevent cross-company access
+      claims = claims.filter(claim => claim.companyId === session.companyId);
+
+      // Filter by status if provided
+      if (status) {
+        claims = claims.filter(claim => claim.status === status);
+      }
+
+      res.json(claims);
+    } catch (error) {
+      console.error("Get expense claims error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/expense-claims/:id", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to access this claim" });
+      }
+
+      // Security: Verify access rights (own claim, team member claim for manager, or admin)
+      const user = await storage.getUser(session.userId);
+      if (session.role !== "COMPANY_ADMIN" && session.role !== "SUPER_ADMIN") {
+        if (!user || !user.employeeId) {
+          return res.status(403).json({ error: "Not authorized to access this claim" });
+        }
+        
+        // Check if it's own claim
+        const isOwnClaim = claim.employeeId === user.employeeId;
+        
+        // Check if employee reports to this manager
+        const employee = await storage.getEmployee(claim.employeeId);
+        const isManagerOfEmployee = employee?.reportingManagerId === user.employeeId;
+        
+        if (!isOwnClaim && !isManagerOfEmployee) {
+          return res.status(403).json({ error: "Not authorized to access this claim" });
+        }
+      }
+
+      res.json(claim);
+    } catch (error) {
+      console.error("Get expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const user = await storage.getUser(session.userId);
+      if (!user || !user.employeeId) {
+        return res.status(400).json({ error: "User has no associated employee record" });
+      }
+
+      // Validate request body using Zod schema
+      const validation = insertExpenseClaimSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid request data", details: validation.error.errors });
+      }
+
+      // Create claim with security-enforced fields
+      const claimData = {
+        ...validation.data,
+        companyId: session.companyId,
+        employeeId: validation.data.employeeId || user.employeeId,
+        status: "draft",
+      };
+
+      // Security: Regular employees can only create claims for themselves
+      if (session.role !== "COMPANY_ADMIN" && claimData.employeeId !== user.employeeId) {
+        return res.status(403).json({ error: "Not authorized to create claims for other employees" });
+      }
+
+      const claim = await storage.createExpenseClaim(claimData);
+      res.status(201).json(claim);
+    } catch (error) {
+      console.error("Create expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/expense-claims/:id", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to update this claim" });
+      }
+
+      // Security: Only claim owner or company admin can update
+      const user = await storage.getUser(session.userId);
+      const isOwner = user?.employeeId === claim.employeeId;
+      const isAdmin = session.role === "COMPANY_ADMIN" || session.role === "SUPER_ADMIN";
+      
+      if (!isOwner && !isAdmin) {
+        return res.status(403).json({ error: "Not authorized to update this claim" });
+      }
+
+      // Employees can only update draft claims
+      if (!isAdmin && claim.status !== "draft") {
+        return res.status(400).json({ error: "Can only update draft claims" });
+      }
+
+      // Validate request body using whitelist schema to prevent mass assignment
+      const validation = updateExpenseClaimSchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Invalid request data", details: validation.error.errors });
+      }
+
+      // Only allow updating safe fields - prevents tampering with status, employeeId, companyId, audit fields
+      const updated = await storage.updateExpenseClaim(req.params.id, validation.data);
+      if (!updated) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Update expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/expense-claims/:id", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to delete this claim" });
+      }
+
+      // Security: Only claim owner can delete
+      const user = await storage.getUser(session.userId);
+      if (!user || !user.employeeId || user.employeeId !== claim.employeeId) {
+        return res.status(403).json({ error: "Not authorized to delete this claim" });
+      }
+
+      // Can only delete draft claims
+      if (claim.status !== "draft") {
+        return res.status(400).json({ error: "Can only delete draft claims" });
+      }
+
+      const success = await storage.deleteExpenseClaim(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims/:id/submit", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to submit this claim" });
+      }
+
+      // Security: Only claim owner can submit
+      const user = await storage.getUser(session.userId);
+      if (!user || !user.employeeId || user.employeeId !== claim.employeeId) {
+        return res.status(403).json({ error: "Not authorized to submit this claim" });
+      }
+
+      // Status transition validation: Can only submit draft claims
+      if (claim.status !== "draft") {
+        return res.status(400).json({ error: "Can only submit draft claims" });
+      }
+
+      // Verify claim has at least one item
+      const items = await storage.getExpenseClaimItemsByClaim(claim.id);
+      if (items.length === 0) {
+        return res.status(400).json({ error: "Cannot submit empty claim. Add expense items first." });
+      }
+
+      const updated = await storage.updateExpenseClaim(req.params.id, {
+        status: "pending_approval",
+        submittedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Submit expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims/:id/approve", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to approve this claim" });
+      }
+
+      // Status transition validation: Can only approve pending claims
+      if (claim.status !== "pending_approval") {
+        return res.status(400).json({ error: "Can only approve claims that are pending approval" });
+      }
+
+      // Security: Only the employee's reporting manager can approve
+      const user = await storage.getUser(session.userId);
+      if (!user || !user.employeeId) {
+        return res.status(403).json({ error: "User has no associated employee record" });
+      }
+
+      const employee = await storage.getEmployee(claim.employeeId);
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+
+      // Verify that the current user is the employee's reporting manager
+      if (employee.reportingManagerId !== user.employeeId) {
+        return res.status(403).json({ error: "Only the reporting manager can approve this claim" });
+      }
+      
+      const updated = await storage.updateExpenseClaim(req.params.id, {
+        status: "approved",
+        managerReviewedBy: user.employeeId,
+        managerReviewedAt: new Date(),
+        managerRemarks: req.body.remarks || null,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Approve expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims/:id/reject", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to reject this claim" });
+      }
+
+      // Status transition validation: Can only reject pending claims
+      if (claim.status !== "pending_approval") {
+        return res.status(400).json({ error: "Can only reject claims that are pending approval" });
+      }
+
+      // Security: Only the employee's reporting manager can reject
+      const user = await storage.getUser(session.userId);
+      if (!user || !user.employeeId) {
+        return res.status(403).json({ error: "User has no associated employee record" });
+      }
+
+      const employee = await storage.getEmployee(claim.employeeId);
+      if (!employee) {
+        return res.status(404).json({ error: "Employee not found" });
+      }
+
+      // Verify that the current user is the employee's reporting manager
+      if (employee.reportingManagerId !== user.employeeId) {
+        return res.status(403).json({ error: "Only the reporting manager can reject this claim" });
+      }
+
+      const updated = await storage.updateExpenseClaim(req.params.id, {
+        status: "rejected",
+        managerReviewedBy: user.employeeId,
+        managerReviewedAt: new Date(),
+        managerRemarks: req.body.remarks || "Rejected by manager",
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Reject expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims/:id/disburse", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session || !session.companyId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const claim = await storage.getExpenseClaim(req.params.id);
+      if (!claim) {
+        return res.status(404).json({ error: "Expense claim not found" });
+      }
+
+      // Security: Verify company scoping
+      if (claim.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Not authorized to disburse this claim" });
+      }
+
+      // Status transition validation: Can only disburse approved claims
+      if (claim.status !== "approved") {
+        return res.status(400).json({ error: "Only approved claims can be disbursed" });
+      }
+
+      const updated = await storage.updateExpenseClaim(req.params.id, {
+        status: "disbursed",
+        adminDisbursedBy: session.userId,
+        adminDisbursedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Disburse expense claim error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== EXPENSE CLAIM ITEMS ====================
+  app.get("/api/expense-claims/:claimId/items", requireAuth, async (req, res) => {
+    try {
+      const items = await storage.getExpenseClaimItemsByClaim(req.params.claimId);
+      res.json(items);
+    } catch (error) {
+      console.error("Get expense claim items error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/expense-claims/:claimId/items", requireAuth, async (req, res) => {
+    try {
+      const itemData = {
+        ...req.body,
+        claimId: req.params.claimId,
+      };
+
+      const item = await storage.createExpenseClaimItem(itemData);
+      
+      // Update total amount on claim
+      const claim = await storage.getExpenseClaim(req.params.claimId);
+      if (claim) {
+        const items = await storage.getExpenseClaimItemsByClaim(req.params.claimId);
+        const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+        await storage.updateExpenseClaim(req.params.claimId, { totalAmount });
+      }
+
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Create expense claim item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/expense-claim-items/:id", requireAuth, async (req, res) => {
+    try {
+      const item = await storage.getExpenseClaimItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Expense claim item not found" });
+      }
+
+      const updated = await storage.updateExpenseClaimItem(req.params.id, req.body);
+      
+      // Update total amount on claim
+      const items = await storage.getExpenseClaimItemsByClaim(item.claimId);
+      const totalAmount = items.reduce((sum, i) => sum + (i.id === req.params.id ? (req.body.amount || i.amount) : i.amount), 0);
+      await storage.updateExpenseClaim(item.claimId, { totalAmount });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update expense claim item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/expense-claim-items/:id", requireAuth, async (req, res) => {
+    try {
+      const item = await storage.getExpenseClaimItem(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: "Expense claim item not found" });
+      }
+
+      const success = await storage.deleteExpenseClaimItem(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Expense claim item not found" });
+      }
+
+      // Update total amount on claim
+      const items = await storage.getExpenseClaimItemsByClaim(item.claimId);
+      const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
+      await storage.updateExpenseClaim(item.claimId, { totalAmount });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete expense claim item error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -11,7 +11,9 @@ import {
   type LeaveType, type InsertLeaveType,
   type ExpenseType, type InsertExpenseType,
   type PayrollRecord, type InsertPayrollRecord,
-  type PayrollItem, type InsertPayrollItem
+  type PayrollItem, type InsertPayrollItem,
+  type ExpenseClaim, type InsertExpenseClaim,
+  type ExpenseClaimItem, type InsertExpenseClaimItem
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -116,6 +118,22 @@ export interface IStorage {
   createPayrollItem(item: InsertPayrollItem): Promise<PayrollItem>;
   updatePayrollItem(id: string, updates: Partial<PayrollItem>): Promise<PayrollItem | undefined>;
   deletePayrollItem(id: string): Promise<boolean>;
+
+  // Expense Claims
+  getExpenseClaim(id: string): Promise<ExpenseClaim | undefined>;
+  getExpenseClaimsByCompany(companyId: string): Promise<ExpenseClaim[]>;
+  getExpenseClaimsByEmployee(employeeId: string): Promise<ExpenseClaim[]>;
+  getExpenseClaimsByManager(managerId: string): Promise<ExpenseClaim[]>;
+  createExpenseClaim(claim: InsertExpenseClaim): Promise<ExpenseClaim>;
+  updateExpenseClaim(id: string, updates: Partial<ExpenseClaim>): Promise<ExpenseClaim | undefined>;
+  deleteExpenseClaim(id: string): Promise<boolean>;
+
+  // Expense Claim Items
+  getExpenseClaimItem(id: string): Promise<ExpenseClaimItem | undefined>;
+  getExpenseClaimItemsByClaim(claimId: string): Promise<ExpenseClaimItem[]>;
+  createExpenseClaimItem(item: InsertExpenseClaimItem): Promise<ExpenseClaimItem>;
+  updateExpenseClaimItem(id: string, updates: Partial<ExpenseClaimItem>): Promise<ExpenseClaimItem | undefined>;
+  deleteExpenseClaimItem(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -133,6 +151,8 @@ export class MemStorage implements IStorage {
   private expenseTypes: Map<string, ExpenseType>;
   private payrollRecords: Map<string, PayrollRecord>;
   private payrollItems: Map<string, PayrollItem>;
+  private expenseClaims: Map<string, ExpenseClaim>;
+  private expenseClaimItems: Map<string, ExpenseClaimItem>;
 
   constructor() {
     this.users = new Map();
@@ -149,6 +169,8 @@ export class MemStorage implements IStorage {
     this.holidays = new Map();
     this.leaveTypes = new Map();
     this.expenseTypes = new Map();
+    this.expenseClaims = new Map();
+    this.expenseClaimItems = new Map();
     this.seedSuperAdmin();
     this.seedDemoData();
   }
@@ -229,7 +251,38 @@ export class MemStorage implements IStorage {
     };
     this.departments.set(deptSalesId, deptSales);
 
-    // Create Demo Employees with CTC
+    // Create role levels for expense management
+    const roleJrMgrId = randomUUID();
+    const roleJrMgr: RoleLevel = {
+      id: roleJrMgrId,
+      companyId: company1Id,
+      role: "Manager",
+      level: "Junior",
+      createdAt: new Date(),
+    };
+    this.rolesLevels.set(roleJrMgrId, roleJrMgr);
+
+    const roleSrMgrId = randomUUID();
+    const roleSrMgr: RoleLevel = {
+      id: roleSrMgrId,
+      companyId: company1Id,
+      role: "Manager",
+      level: "Senior",
+      createdAt: new Date(),
+    };
+    this.rolesLevels.set(roleSrMgrId, roleSrMgr);
+
+    const roleTopMgmtId = randomUUID();
+    const roleTopMgmt: RoleLevel = {
+      id: roleTopMgmtId,
+      companyId: company1Id,
+      role: "Leadership",
+      level: "Top Management",
+      createdAt: new Date(),
+    };
+    this.rolesLevels.set(roleTopMgmtId, roleTopMgmt);
+
+    // Create Demo Employees with CTC and reporting structure
     const emp1Id = randomUUID();
     const emp1: Employee = {
       id: emp1Id,
@@ -240,7 +293,8 @@ export class MemStorage implements IStorage {
       phone: "+1-555-0101",
       departmentId: deptEngId,
       designationId: null,
-      roleLevelId: null,
+      roleLevelId: roleSrMgrId,
+      reportingManagerId: null,
       status: "active",
       joinDate: "2022-01-15",
       exitDate: null,
@@ -273,7 +327,8 @@ export class MemStorage implements IStorage {
       phone: "+1-555-0102",
       departmentId: deptEngId,
       designationId: null,
-      roleLevelId: null,
+      roleLevelId: roleJrMgrId,
+      reportingManagerId: emp1Id,
       status: "active",
       joinDate: "2021-06-01",
       exitDate: null,
@@ -306,7 +361,8 @@ export class MemStorage implements IStorage {
       phone: "+1-555-0103",
       departmentId: deptSalesId,
       designationId: null,
-      roleLevelId: null,
+      roleLevelId: roleTopMgmtId,
+      reportingManagerId: null,
       status: "active",
       joinDate: "2020-09-15",
       exitDate: null,
@@ -340,7 +396,8 @@ export class MemStorage implements IStorage {
       phone: "+1-555-0104",
       departmentId: deptHRId,
       designationId: null,
-      roleLevelId: null,
+      roleLevelId: roleJrMgrId,
+      reportingManagerId: emp1Id,
       status: "active",
       joinDate: "2023-02-01",
       exitDate: null,
@@ -528,6 +585,218 @@ export class MemStorage implements IStorage {
         });
       }
     });
+
+    // Create Expense Types with role-level limits
+    const expTypeTravel = randomUUID();
+    const travelExpense: ExpenseType = {
+      id: expTypeTravel,
+      companyId: company1Id,
+      code: "TRAVEL",
+      name: "Travel Expense",
+      roleLevelLimits: [
+        { roleLevelId: roleJrMgrId, roleName: "Junior Manager", limitAmount: 10, limitUnit: "per_km" },
+        { roleLevelId: roleSrMgrId, roleName: "Senior Manager", limitAmount: 20, limitUnit: "per_km" },
+        { roleLevelId: roleTopMgmtId, roleName: "Top Management", limitAmount: 30, limitUnit: "per_km" },
+      ],
+      enableGoogleMaps: true,
+      billMandatory: false,
+      approvalRequired: true,
+      createdAt: new Date(),
+    };
+    this.expenseTypes.set(expTypeTravel, travelExpense);
+
+    const expTypeFood = randomUUID();
+    const foodExpense: ExpenseType = {
+      id: expTypeFood,
+      companyId: company1Id,
+      code: "FOOD",
+      name: "Food & Meals",
+      roleLevelLimits: [
+        { roleLevelId: roleJrMgrId, roleName: "Junior Manager", limitAmount: 500, limitUnit: "per_day" },
+        { roleLevelId: roleSrMgrId, roleName: "Senior Manager", limitAmount: 1000, limitUnit: "per_day" },
+        { roleLevelId: roleTopMgmtId, roleName: "Top Management", limitAmount: 2000, limitUnit: "per_day" },
+      ],
+      enableGoogleMaps: false,
+      billMandatory: true,
+      approvalRequired: true,
+      createdAt: new Date(),
+    };
+    this.expenseTypes.set(expTypeFood, foodExpense);
+
+    const expTypeAccom = randomUUID();
+    const accomExpense: ExpenseType = {
+      id: expTypeAccom,
+      companyId: company1Id,
+      code: "ACCOMMODATION",
+      name: "Accommodation",
+      roleLevelLimits: [
+        { roleLevelId: roleJrMgrId, roleName: "Junior Manager", limitAmount: 3000, limitUnit: "per_day" },
+        { roleLevelId: roleSrMgrId, roleName: "Senior Manager", limitAmount: 5000, limitUnit: "per_day" },
+        { roleLevelId: roleTopMgmtId, roleName: "Top Management", limitAmount: 10000, limitUnit: "per_day" },
+      ],
+      enableGoogleMaps: false,
+      billMandatory: true,
+      approvalRequired: true,
+      createdAt: new Date(),
+    };
+    this.expenseTypes.set(expTypeAccom, accomExpense);
+
+    // Create sample expense claims
+    const claim1Id = randomUUID();
+    const claim1: ExpenseClaim = {
+      id: claim1Id,
+      companyId: company1Id,
+      employeeId: emp2Id,
+      claimNumber: "EXP-2025-001",
+      month: currentMonth - 1,
+      year: currentYear,
+      totalAmount: 8500,
+      status: "pending_approval",
+      submittedAt: new Date(),
+      managerReviewedBy: null,
+      managerReviewedAt: null,
+      managerRemarks: null,
+      adminDisbursedBy: null,
+      adminDisbursedAt: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaims.set(claim1Id, claim1);
+
+    const claim1Item1 = randomUUID();
+    const claim1I1: ExpenseClaimItem = {
+      id: claim1Item1,
+      claimId: claim1Id,
+      expenseTypeId: expTypeTravel,
+      date: "2025-10-15",
+      amount: 2500,
+      description: "Client meeting in Mumbai - Office to Client Site",
+      billUrl: null,
+      startLocation: "Tech Solutions Office, Bangalore",
+      endLocation: "ABC Corp, Mumbai",
+      distanceKm: 250,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim1Item1, claim1I1);
+
+    const claim1Item2 = randomUUID();
+    const claim1I2: ExpenseClaimItem = {
+      id: claim1Item2,
+      claimId: claim1Id,
+      expenseTypeId: expTypeFood,
+      date: "2025-10-15",
+      amount: 1500,
+      description: "Team lunch with client",
+      billUrl: "/uploads/bill-001.pdf",
+      startLocation: null,
+      endLocation: null,
+      distanceKm: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim1Item2, claim1I2);
+
+    const claim1Item3 = randomUUID();
+    const claim1I3: ExpenseClaimItem = {
+      id: claim1Item3,
+      claimId: claim1Id,
+      expenseTypeId: expTypeAccom,
+      date: "2025-10-15",
+      amount: 4500,
+      description: "Hotel stay for client meeting",
+      billUrl: "/uploads/bill-002.pdf",
+      startLocation: null,
+      endLocation: null,
+      distanceKm: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim1Item3, claim1I3);
+
+    const claim2Id = randomUUID();
+    const claim2: ExpenseClaim = {
+      id: claim2Id,
+      companyId: company1Id,
+      employeeId: emp4Id,
+      claimNumber: "EXP-2025-002",
+      month: currentMonth - 1,
+      year: currentYear,
+      totalAmount: 1200,
+      status: "approved",
+      submittedAt: new Date(currentYear, currentMonth - 2, 20),
+      managerReviewedBy: emp1Id,
+      managerReviewedAt: new Date(currentYear, currentMonth - 2, 22),
+      managerRemarks: "Approved",
+      adminDisbursedBy: null,
+      adminDisbursedAt: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaims.set(claim2Id, claim2);
+
+    const claim2Item1 = randomUUID();
+    const claim2I1: ExpenseClaimItem = {
+      id: claim2Item1,
+      claimId: claim2Id,
+      expenseTypeId: expTypeFood,
+      date: "2025-10-10",
+      amount: 1200,
+      description: "Recruitment interviews - Candidate lunch",
+      billUrl: "/uploads/bill-003.pdf",
+      startLocation: null,
+      endLocation: null,
+      distanceKm: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim2Item1, claim2I1);
+
+    const claim3Id = randomUUID();
+    const claim3: ExpenseClaim = {
+      id: claim3Id,
+      companyId: company1Id,
+      employeeId: emp3Id,
+      claimNumber: "EXP-2025-003",
+      month: currentMonth - 1,
+      year: currentYear,
+      totalAmount: 15000,
+      status: "disbursed",
+      submittedAt: new Date(currentYear, currentMonth - 2, 10),
+      managerReviewedBy: null,
+      managerReviewedAt: new Date(currentYear, currentMonth - 2, 11),
+      managerRemarks: "Auto-approved for Top Management",
+      adminDisbursedBy: admin1Id,
+      adminDisbursedAt: new Date(currentYear, currentMonth - 2, 15),
+      createdAt: new Date(),
+    };
+    this.expenseClaims.set(claim3Id, claim3);
+
+    const claim3Item1 = randomUUID();
+    const claim3I1: ExpenseClaimItem = {
+      id: claim3Item1,
+      claimId: claim3Id,
+      expenseTypeId: expTypeTravel,
+      date: "2025-10-05",
+      amount: 9000,
+      description: "Sales team offsite - Goa",
+      billUrl: null,
+      startLocation: "Bangalore Office",
+      endLocation: "Goa Resort",
+      distanceKm: 300,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim3Item1, claim3I1);
+
+    const claim3Item2 = randomUUID();
+    const claim3I2: ExpenseClaimItem = {
+      id: claim3Item2,
+      claimId: claim3Id,
+      expenseTypeId: expTypeAccom,
+      date: "2025-10-05",
+      amount: 6000,
+      description: "Hotel for sales team offsite - 2 nights",
+      billUrl: "/uploads/bill-004.pdf",
+      startLocation: null,
+      endLocation: null,
+      distanceKm: null,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(claim3Item2, claim3I2);
   }
 
   // User methods
@@ -1040,6 +1309,100 @@ export class MemStorage implements IStorage {
 
   async deletePayrollItem(id: string): Promise<boolean> {
     return this.payrollItems.delete(id);
+  }
+
+  // ExpenseClaim methods
+  async getExpenseClaim(id: string): Promise<ExpenseClaim | undefined> {
+    return this.expenseClaims.get(id);
+  }
+
+  async getExpenseClaimsByCompany(companyId: string): Promise<ExpenseClaim[]> {
+    return Array.from(this.expenseClaims.values()).filter((claim) => claim.companyId === companyId);
+  }
+
+  async getExpenseClaimsByEmployee(employeeId: string): Promise<ExpenseClaim[]> {
+    return Array.from(this.expenseClaims.values()).filter((claim) => claim.employeeId === employeeId);
+  }
+
+  async getExpenseClaimsByManager(managerId: string): Promise<ExpenseClaim[]> {
+    const employees = await this.getEmployeesByCompany("");
+    const teamMemberIds = employees
+      .filter((emp) => emp.reportingManagerId === managerId)
+      .map((emp) => emp.id);
+    
+    return Array.from(this.expenseClaims.values()).filter(
+      (claim) => teamMemberIds.includes(claim.employeeId) && claim.status === "pending_approval"
+    );
+  }
+
+  async createExpenseClaim(insertClaim: InsertExpenseClaim): Promise<ExpenseClaim> {
+    const id = randomUUID();
+    const claim: ExpenseClaim = { 
+      ...insertClaim,
+      id,
+      status: insertClaim.status || "draft",
+      totalAmount: insertClaim.totalAmount || 0,
+      submittedAt: insertClaim.submittedAt || null,
+      managerReviewedBy: insertClaim.managerReviewedBy || null,
+      managerReviewedAt: insertClaim.managerReviewedAt || null,
+      managerRemarks: insertClaim.managerRemarks || null,
+      adminDisbursedBy: insertClaim.adminDisbursedBy || null,
+      adminDisbursedAt: insertClaim.adminDisbursedAt || null,
+      createdAt: new Date(),
+    };
+    this.expenseClaims.set(id, claim);
+    return claim;
+  }
+
+  async updateExpenseClaim(id: string, updates: Partial<ExpenseClaim>): Promise<ExpenseClaim | undefined> {
+    const claim = this.expenseClaims.get(id);
+    if (!claim) return undefined;
+    const updated = { ...claim, ...updates };
+    this.expenseClaims.set(id, updated);
+    return updated;
+  }
+
+  async deleteExpenseClaim(id: string): Promise<boolean> {
+    const items = await this.getExpenseClaimItemsByClaim(id);
+    items.forEach((item) => this.expenseClaimItems.delete(item.id));
+    return this.expenseClaims.delete(id);
+  }
+
+  // ExpenseClaimItem methods
+  async getExpenseClaimItem(id: string): Promise<ExpenseClaimItem | undefined> {
+    return this.expenseClaimItems.get(id);
+  }
+
+  async getExpenseClaimItemsByClaim(claimId: string): Promise<ExpenseClaimItem[]> {
+    return Array.from(this.expenseClaimItems.values()).filter((item) => item.claimId === claimId);
+  }
+
+  async createExpenseClaimItem(insertItem: InsertExpenseClaimItem): Promise<ExpenseClaimItem> {
+    const id = randomUUID();
+    const item: ExpenseClaimItem = { 
+      ...insertItem,
+      id,
+      description: insertItem.description || null,
+      billUrl: insertItem.billUrl || null,
+      startLocation: insertItem.startLocation || null,
+      endLocation: insertItem.endLocation || null,
+      distanceKm: insertItem.distanceKm || null,
+      createdAt: new Date(),
+    };
+    this.expenseClaimItems.set(id, item);
+    return item;
+  }
+
+  async updateExpenseClaimItem(id: string, updates: Partial<ExpenseClaimItem>): Promise<ExpenseClaimItem | undefined> {
+    const item = this.expenseClaimItems.get(id);
+    if (!item) return undefined;
+    const updated = { ...item, ...updates };
+    this.expenseClaimItems.set(id, updated);
+    return updated;
+  }
+
+  async deleteExpenseClaimItem(id: string): Promise<boolean> {
+    return this.expenseClaimItems.delete(id);
   }
 }
 

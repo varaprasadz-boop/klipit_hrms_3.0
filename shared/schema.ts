@@ -254,6 +254,7 @@ export const employees = pgTable("employees", {
   departmentId: varchar("department_id").references(() => departments.id),
   designationId: varchar("designation_id").references(() => designations.id),
   roleLevelId: varchar("role_level_id").references(() => rolesLevels.id),
+  reportingManagerId: varchar("reporting_manager_id").references((): any => employees.id),
   status: text("status").notNull().default("active"),
   joinDate: date("join_date").notNull(),
   exitDate: date("exit_date"),
@@ -371,20 +372,98 @@ export const insertLeaveTypeSchema = createInsertSchema(leaveTypes).omit({
 export type InsertLeaveType = z.infer<typeof insertLeaveTypeSchema>;
 export type LeaveType = typeof leaveTypes.$inferSelect;
 
+// Role-Level Limits for Expense Types
+export const roleLevelLimitSchema = z.object({
+  roleLevelId: z.string(),
+  roleName: z.string(),
+  limitAmount: z.number(),
+  limitUnit: z.enum(["fixed", "per_km", "per_day"]),
+});
+
 // Expense Types
 export const expenseTypes = pgTable("expense_types", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id),
   code: text("code").notNull(),
   name: text("name").notNull(),
-  requiresReceipt: boolean("requires_receipt").default(false),
+  roleLevelLimits: jsonb("role_level_limits").$type<z.infer<typeof roleLevelLimitSchema>[]>().default([]),
+  enableGoogleMaps: boolean("enable_google_maps").default(false),
+  billMandatory: boolean("bill_mandatory").default(false),
+  approvalRequired: boolean("approval_required").default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertExpenseTypeSchema = createInsertSchema(expenseTypes).omit({
   id: true,
   createdAt: true,
+}).extend({
+  roleLevelLimits: z.array(roleLevelLimitSchema).optional(),
 });
 
 export type InsertExpenseType = z.infer<typeof insertExpenseTypeSchema>;
 export type ExpenseType = typeof expenseTypes.$inferSelect;
+
+// Expense Claims
+export const expenseClaims = pgTable("expense_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  claimNumber: text("claim_number").notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  totalAmount: integer("total_amount").notNull().default(0),
+  status: text("status").notNull().default("draft"), // draft, pending_approval, approved, rejected, disbursed
+  submittedAt: timestamp("submitted_at"),
+  managerReviewedBy: varchar("manager_reviewed_by").references(() => employees.id),
+  managerReviewedAt: timestamp("manager_reviewed_at"),
+  managerRemarks: text("manager_remarks"),
+  adminDisbursedBy: varchar("admin_disbursed_by"),
+  adminDisbursedAt: timestamp("admin_disbursed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExpenseClaimSchema = createInsertSchema(expenseClaims).omit({
+  id: true,
+  createdAt: true,
+  companyId: true,
+}).extend({
+  status: z.enum(["draft", "pending_approval", "approved", "rejected", "disbursed"]).optional(),
+});
+
+// Schema for updating draft expense claims (whitelist safe fields only)
+export const updateExpenseClaimSchema = z.object({
+  month: z.number().min(1).max(12).optional(),
+  year: z.number().min(2000).max(2100).optional(),
+  claimNumber: z.string().optional(),
+  totalAmount: z.number().nonnegative().optional(),
+});
+
+export type InsertExpenseClaim = z.infer<typeof insertExpenseClaimSchema>;
+export type UpdateExpenseClaim = z.infer<typeof updateExpenseClaimSchema>;
+export type ExpenseClaim = typeof expenseClaims.$inferSelect;
+
+// Expense Claim Items
+export const expenseClaimItems = pgTable("expense_claim_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  claimId: varchar("claim_id").notNull().references(() => expenseClaims.id),
+  expenseTypeId: varchar("expense_type_id").notNull().references(() => expenseTypes.id),
+  date: date("date").notNull(),
+  amount: integer("amount").notNull(),
+  description: text("description"),
+  billUrl: text("bill_url"),
+  startLocation: text("start_location"),
+  endLocation: text("end_location"),
+  distanceKm: integer("distance_km"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertExpenseClaimItemSchema = createInsertSchema(expenseClaimItems).omit({
+  id: true,
+  createdAt: true,
+  claimId: true,
+}).extend({
+  amount: z.number().positive(),
+});
+
+export type InsertExpenseClaimItem = z.infer<typeof insertExpenseClaimItemSchema>;
+export type ExpenseClaimItem = typeof expenseClaimItems.$inferSelect;
