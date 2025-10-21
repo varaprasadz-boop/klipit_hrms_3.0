@@ -9,7 +9,9 @@ import {
   type Shift, type InsertShift,
   type Holiday, type InsertHoliday,
   type LeaveType, type InsertLeaveType,
-  type ExpenseType, type InsertExpenseType
+  type ExpenseType, type InsertExpenseType,
+  type PayrollRecord, type InsertPayrollRecord,
+  type PayrollItem, type InsertPayrollItem
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -98,6 +100,22 @@ export interface IStorage {
   createExpenseType(expenseType: InsertExpenseType): Promise<ExpenseType>;
   updateExpenseType(id: string, updates: Partial<ExpenseType>): Promise<ExpenseType | undefined>;
   deleteExpenseType(id: string): Promise<boolean>;
+
+  // Payroll Records
+  getPayrollRecord(id: string): Promise<PayrollRecord | undefined>;
+  getPayrollRecordsByCompany(companyId: string): Promise<PayrollRecord[]>;
+  getPayrollRecordsByEmployee(employeeId: string): Promise<PayrollRecord[]>;
+  getPayrollRecordByEmployeeAndPeriod(employeeId: string, month: number, year: number): Promise<PayrollRecord | undefined>;
+  createPayrollRecord(record: InsertPayrollRecord): Promise<PayrollRecord>;
+  updatePayrollRecord(id: string, updates: Partial<PayrollRecord>): Promise<PayrollRecord | undefined>;
+  deletePayrollRecord(id: string): Promise<boolean>;
+
+  // Payroll Items
+  getPayrollItem(id: string): Promise<PayrollItem | undefined>;
+  getPayrollItemsByPayroll(payrollId: string): Promise<PayrollItem[]>;
+  createPayrollItem(item: InsertPayrollItem): Promise<PayrollItem>;
+  updatePayrollItem(id: string, updates: Partial<PayrollItem>): Promise<PayrollItem | undefined>;
+  deletePayrollItem(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -113,6 +131,8 @@ export class MemStorage implements IStorage {
   private holidays: Map<string, Holiday>;
   private leaveTypes: Map<string, LeaveType>;
   private expenseTypes: Map<string, ExpenseType>;
+  private payrollRecords: Map<string, PayrollRecord>;
+  private payrollItems: Map<string, PayrollItem>;
 
   constructor() {
     this.users = new Map();
@@ -123,6 +143,8 @@ export class MemStorage implements IStorage {
     this.ctcComponents = new Map();
     this.employees = new Map();
     this.attendanceRecords = new Map();
+    this.payrollRecords = new Map();
+    this.payrollItems = new Map();
     this.shifts = new Map();
     this.holidays = new Map();
     this.leaveTypes = new Map();
@@ -600,6 +622,93 @@ export class MemStorage implements IStorage {
 
   async deleteExpenseType(id: string): Promise<boolean> {
     return this.expenseTypes.delete(id);
+  }
+
+  // PayrollRecord methods
+  async getPayrollRecord(id: string): Promise<PayrollRecord | undefined> {
+    return this.payrollRecords.get(id);
+  }
+
+  async getPayrollRecordsByCompany(companyId: string): Promise<PayrollRecord[]> {
+    return Array.from(this.payrollRecords.values()).filter((pr) => pr.companyId === companyId);
+  }
+
+  async getPayrollRecordsByEmployee(employeeId: string): Promise<PayrollRecord[]> {
+    return Array.from(this.payrollRecords.values()).filter((pr) => pr.employeeId === employeeId);
+  }
+
+  async getPayrollRecordByEmployeeAndPeriod(
+    employeeId: string, 
+    month: number, 
+    year: number
+  ): Promise<PayrollRecord | undefined> {
+    return Array.from(this.payrollRecords.values()).find(
+      (pr) => pr.employeeId === employeeId && pr.month === month && pr.year === year
+    );
+  }
+
+  async createPayrollRecord(insertPayrollRecord: InsertPayrollRecord): Promise<PayrollRecord> {
+    const id = randomUUID();
+    const payrollRecord: PayrollRecord = { 
+      ...insertPayrollRecord,
+      id,
+      approvedBy: insertPayrollRecord.approvedBy || null,
+      approvedAt: insertPayrollRecord.approvedAt || null,
+      rejectionReason: insertPayrollRecord.rejectionReason || null,
+      payslipPublished: insertPayrollRecord.payslipPublished || false,
+      payslipPublishedAt: insertPayrollRecord.payslipPublishedAt || null,
+      paidLeaveDays: insertPayrollRecord.paidLeaveDays || 0,
+      overtimeHours: insertPayrollRecord.overtimeHours || 0,
+      createdAt: new Date(),
+    };
+    this.payrollRecords.set(id, payrollRecord);
+    return payrollRecord;
+  }
+
+  async updatePayrollRecord(id: string, updates: Partial<PayrollRecord>): Promise<PayrollRecord | undefined> {
+    const payrollRecord = this.payrollRecords.get(id);
+    if (!payrollRecord) return undefined;
+    const updated = { ...payrollRecord, ...updates };
+    this.payrollRecords.set(id, updated);
+    return updated;
+  }
+
+  async deletePayrollRecord(id: string): Promise<boolean> {
+    return this.payrollRecords.delete(id);
+  }
+
+  // PayrollItem methods
+  async getPayrollItem(id: string): Promise<PayrollItem | undefined> {
+    return this.payrollItems.get(id);
+  }
+
+  async getPayrollItemsByPayroll(payrollId: string): Promise<PayrollItem[]> {
+    return Array.from(this.payrollItems.values()).filter((pi) => pi.payrollId === payrollId);
+  }
+
+  async createPayrollItem(insertPayrollItem: InsertPayrollItem): Promise<PayrollItem> {
+    const id = randomUUID();
+    const payrollItem: PayrollItem = { 
+      ...insertPayrollItem,
+      id,
+      ctcComponentId: insertPayrollItem.ctcComponentId || null,
+      description: insertPayrollItem.description || null,
+      createdAt: new Date(),
+    };
+    this.payrollItems.set(id, payrollItem);
+    return payrollItem;
+  }
+
+  async updatePayrollItem(id: string, updates: Partial<PayrollItem>): Promise<PayrollItem | undefined> {
+    const payrollItem = this.payrollItems.get(id);
+    if (!payrollItem) return undefined;
+    const updated = { ...payrollItem, ...updates };
+    this.payrollItems.set(id, updated);
+    return updated;
+  }
+
+  async deletePayrollItem(id: string): Promise<boolean> {
+    return this.payrollItems.delete(id);
   }
 }
 
