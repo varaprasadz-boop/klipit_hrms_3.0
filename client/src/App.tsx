@@ -246,6 +246,11 @@ function Router() {
           <ExpenseDashboardPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/admin/expenses">
+        <ProtectedRoute requireCompanyAdmin>
+          <ExpenseDashboardPage />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
