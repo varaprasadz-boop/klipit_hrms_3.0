@@ -124,6 +124,63 @@ export const insertCtcComponentSchema = createInsertSchema(ctcComponents)
 export type InsertCtcComponent = z.infer<typeof insertCtcComponentSchema>;
 export type CtcComponent = typeof ctcComponents.$inferSelect;
 
+// Payroll
+export const payrollRecords = pgTable("payroll_records", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  employeeId: varchar("employee_id").notNull().references(() => employees.id),
+  month: integer("month").notNull(), // 1-12
+  year: integer("year").notNull(),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected
+  workingDays: integer("working_days").notNull(),
+  presentDays: integer("present_days").notNull(),
+  absentDays: integer("absent_days").notNull(),
+  paidLeaveDays: integer("paid_leave_days").default(0),
+  overtimeHours: integer("overtime_hours").default(0),
+  grossPay: integer("gross_pay").notNull(),
+  totalDeductions: integer("total_deductions").notNull(),
+  netPay: integer("net_pay").notNull(),
+  approvedBy: varchar("approved_by"),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  payslipPublished: boolean("payslip_published").default(false),
+  payslipPublishedAt: timestamp("payslip_published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPayrollRecordSchema = createInsertSchema(payrollRecords).omit({
+  id: true,
+  companyId: true,
+  createdAt: true,
+}).extend({
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+});
+
+export type InsertPayrollRecord = z.infer<typeof insertPayrollRecordSchema>;
+export type PayrollRecord = typeof payrollRecords.$inferSelect;
+
+// Payroll Items (individual salary components in a payroll)
+export const payrollItems = pgTable("payroll_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  payrollId: varchar("payroll_id").notNull().references(() => payrollRecords.id, { onDelete: "cascade" }),
+  ctcComponentId: varchar("ctc_component_id").references(() => ctcComponents.id),
+  type: text("type").notNull(), // 'earning' or 'deduction'
+  name: text("name").notNull(),
+  amount: integer("amount").notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPayrollItemSchema = createInsertSchema(payrollItems).omit({
+  id: true,
+  createdAt: true,
+}).extend({
+  type: z.enum(["earning", "deduction"]),
+});
+
+export type InsertPayrollItem = z.infer<typeof insertPayrollItemSchema>;
+export type PayrollItem = typeof payrollItems.$inferSelect;
+
 // Education, Experience, Documents, CTC, Assets, Bank, Insurance, Statutory schemas
 export const educationSchema = z.object({
   degree: z.string(),
