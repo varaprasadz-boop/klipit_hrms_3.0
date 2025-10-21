@@ -137,7 +137,7 @@ export default function ExpenseTypesPage() {
   });
 
   const { data: roleLevels } = useQuery<RoleLevel[]>({
-    queryKey: ["/api/role-levels"],
+    queryKey: ["/api/roles-levels"],
   });
 
   const createMutation = useMutation({

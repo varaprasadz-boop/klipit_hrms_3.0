@@ -396,8 +396,12 @@ export const expenseTypes = pgTable("expense_types", {
 export const insertExpenseTypeSchema = createInsertSchema(expenseTypes).omit({
   id: true,
   createdAt: true,
+  companyId: true,
 }).extend({
   roleLevelLimits: z.array(roleLevelLimitSchema).optional(),
+  enableGoogleMaps: z.boolean().optional(),
+  billMandatory: z.boolean().optional(),
+  approvalRequired: z.boolean().optional(),
 });
 
 export type InsertExpenseType = z.infer<typeof insertExpenseTypeSchema>;
