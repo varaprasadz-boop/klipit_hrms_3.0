@@ -653,6 +653,306 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== PAYROLL ====================
+  app.get("/api/payroll", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!session.companyId) {
+        return res.status(400).json({ error: "User not associated with a company" });
+      }
+
+      const payrollRecords = await storage.getPayrollRecordsByCompany(session.companyId);
+      res.json(payrollRecords);
+    } catch (error) {
+      console.error("Get payroll records error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payroll/generate", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      if (!session.companyId) {
+        return res.status(400).json({ error: "User not associated with a company" });
+      }
+
+      const { month, year, employeeIds } = req.body;
+
+      if (!month || !year) {
+        return res.status(400).json({ error: "Month and year are required" });
+      }
+
+      if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+        return res.status(400).json({ error: "Employee IDs are required" });
+      }
+
+      const generatedPayrolls = [];
+
+      for (const employeeId of employeeIds) {
+        const employee = await storage.getEmployee(employeeId);
+        if (!employee || employee.companyId !== session.companyId) {
+          continue;
+        }
+
+        const existing = await storage.getPayrollRecordByEmployeeAndPeriod(employeeId, month, year);
+        if (existing) {
+          continue;
+        }
+
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+
+        const attendanceRecords = await storage.getAttendanceRecordsByEmployee(employeeId);
+        const monthAttendance = attendanceRecords.filter(record => {
+          if (!record.date) return false;
+          const recordDate = new Date(record.date);
+          return recordDate >= startDate && recordDate <= endDate;
+        });
+
+        const workingDays = endDate.getDate();
+        const presentDays = monthAttendance.filter(r => r.status === "present" || r.status === "approved").length;
+        const absentDays = workingDays - presentDays;
+
+        let grossPay = 0;
+        let totalDeductions = 0;
+
+        if (employee.ctc && Array.isArray(employee.ctc)) {
+          for (const component of employee.ctc) {
+            if (component.frequency === "monthly") {
+              grossPay += component.amount;
+            }
+          }
+        }
+
+        const netPay = grossPay - totalDeductions;
+
+        const payrollRecord = await storage.createPayrollRecord({
+          companyId: session.companyId,
+          employeeId,
+          month,
+          year,
+          status: "pending",
+          workingDays,
+          presentDays,
+          absentDays,
+          paidLeaveDays: 0,
+          overtimeHours: 0,
+          grossPay,
+          totalDeductions,
+          netPay,
+        });
+
+        if (employee.ctc && Array.isArray(employee.ctc)) {
+          for (const component of employee.ctc) {
+            if (component.frequency === "monthly") {
+              await storage.createPayrollItem({
+                payrollId: payrollRecord.id,
+                type: "earning",
+                name: component.component,
+                amount: component.amount,
+              });
+            }
+          }
+        }
+
+        generatedPayrolls.push(payrollRecord);
+      }
+
+      res.status(201).json({ 
+        message: `Generated ${generatedPayrolls.length} payroll records`,
+        payrolls: generatedPayrolls
+      });
+    } catch (error) {
+      console.error("Generate payroll error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/payroll/:id", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(payroll);
+    } catch (error) {
+      console.error("Get payroll record error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/payroll/:id/approve", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (payroll.status === "approved") {
+        return res.status(400).json({ error: "Payroll already approved" });
+      }
+
+      const updated = await storage.updatePayrollRecord(req.params.id, {
+        status: "approved",
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Approve payroll error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/payroll/:id/reject", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const { reason } = req.body;
+      if (!reason) {
+        return res.status(400).json({ error: "Rejection reason is required" });
+      }
+
+      const updated = await storage.updatePayrollRecord(req.params.id, {
+        status: "rejected",
+        rejectionReason: reason,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Reject payroll error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/payroll/:id/publish", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (payroll.status !== "approved") {
+        return res.status(400).json({ error: "Only approved payroll can be published" });
+      }
+
+      const updated = await storage.updatePayrollRecord(req.params.id, {
+        payslipPublished: true,
+        payslipPublishedAt: new Date(),
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Publish payslip error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/payroll/:id/items", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const items = await storage.getPayrollItemsByPayroll(req.params.id);
+      res.json(items);
+    } catch (error) {
+      console.error("Get payroll items error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/payroll/:id", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const payroll = await storage.getPayrollRecord(req.params.id);
+      if (!payroll) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      if (payroll.status === "approved" || payroll.payslipPublished) {
+        return res.status(400).json({ error: "Cannot delete approved or published payroll" });
+      }
+
+      const success = await storage.deletePayrollRecord(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "Payroll record not found" });
+      }
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Delete payroll error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ==================== EMPLOYEES ====================
   app.get("/api/employees", requireAuth, async (req, res) => {
     try {
