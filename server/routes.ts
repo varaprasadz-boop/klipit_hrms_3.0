@@ -2155,16 +2155,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let workflows;
-      if (session.role === UserRole.SUPER_ADMIN) {
-        workflows = await storage.getWorkflowsByCompany(session.companyId || "");
-      } else if (session.role === UserRole.COMPANY_ADMIN) {
-        // Company Admin can see all workflows in their company
+      if (session.role === UserRole.SUPER_ADMIN || session.role === UserRole.COMPANY_ADMIN) {
+        // Admins can see all workflows in their company
         workflows = await storage.getWorkflowsByCompany(session.companyId!);
       } else {
-        // Employees see workflows assigned to them or created by them
-        const assignedToMe = await storage.getWorkflowsByEmployee(session.userId);
-        const createdByMe = await storage.getWorkflowsByAssigner(session.userId);
-        workflows = [...assignedToMe, ...createdByMe];
+        // CRITICAL: Employees can ONLY see workflows assigned to them
+        // This prevents data exposure through the API
+        workflows = await storage.getWorkflowsByEmployee(session.userId);
       }
 
       res.json(workflows);
@@ -2233,9 +2230,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Access denied" });
       }
 
-      const updates = updateWorkflowSchema.parse(req.body);
-      const updated = await storage.updateWorkflow(req.params.id, updates);
+      // CRITICAL: Employees can only update their own workflows
+      // Admins can update any workflow in their company
+      if (session.role === UserRole.EMPLOYEE && workflow.assignedTo !== session.userId) {
+        return res.status(403).json({ error: "You can only update your own workflows" });
+      }
 
+      const updates = updateWorkflowSchema.parse(req.body);
+      
+      // CRITICAL: Employees can only update progress and notes, not assignment or other fields
+      if (session.role === UserRole.EMPLOYEE) {
+        const allowedUpdates: Partial<typeof updates> = {};
+        if (updates.progress !== undefined) allowedUpdates.progress = updates.progress;
+        if (updates.status !== undefined) allowedUpdates.status = updates.status;
+        if (updates.notes !== undefined) allowedUpdates.notes = updates.notes;
+        
+        const updated = await storage.updateWorkflow(req.params.id, allowedUpdates);
+        return res.json(updated);
+      }
+
+      // Admins can update all fields
+      const updated = await storage.updateWorkflow(req.params.id, updates);
       res.json(updated);
     } catch (error) {
       console.error("Update workflow error:", error);

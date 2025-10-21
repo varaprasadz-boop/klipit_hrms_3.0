@@ -31,12 +31,18 @@ const menuItems = [
 
 export default function EmployeeDashboard() {
   const { toast } = useToast();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
   
   const { data: workflows = [], isLoading: workflowsLoading } = useQuery<Workflow[]>({
     queryKey: ["/api/workflows"],
   });
 
-  const myWorkflows = workflows.filter((w) => w.status !== "completed" && w.status !== "cancelled");
+  // CRITICAL: Filter to only show workflows assigned to the logged-in user
+  const myWorkflows = workflows.filter((w) => 
+    w.assignedTo === user.id && 
+    w.status !== "completed" && 
+    w.status !== "cancelled"
+  );
   const urgentWorkflows = myWorkflows.filter((w) => {
     const daysUntilDeadline = Math.ceil(
       (new Date(w.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
