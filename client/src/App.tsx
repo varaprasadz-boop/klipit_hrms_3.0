@@ -48,6 +48,7 @@ import ShiftsPage from "@/pages/masters/shifts";
 import HolidaysPage from "@/pages/masters/holidays";
 import LeaveTypesPage from "@/pages/masters/leave-types";
 import ExpenseTypesPage from "@/pages/masters/expense-types";
+import PayrollPage from "@/pages/payroll";
 
 function Router() {
   return (
@@ -214,6 +215,11 @@ function Router() {
       <Route path="/dashboard/admin/masters/expense-types">
         <ProtectedRoute requireCompanyAdmin>
           <ExpenseTypesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/payroll">
+        <ProtectedRoute requireCompanyAdmin>
+          <PayrollPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />

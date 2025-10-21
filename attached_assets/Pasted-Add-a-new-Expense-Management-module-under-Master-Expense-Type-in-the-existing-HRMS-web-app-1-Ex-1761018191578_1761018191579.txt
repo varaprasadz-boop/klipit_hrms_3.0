@@ -1,0 +1,85 @@
+Add a new Expense Management module under Master → Expense Type in the existing HRMS web app.
+
+1. Expense Type Master Setup
+
+Allow creation of dynamic Expense Types (e.g., Travel, Food, Accommodation, etc.).
+
+For each Expense Type:
+
+Allow selection of Roles & Levels (e.g., Jr. Manager, Sr. Manager, Top Management).
+
+Allow defining expense limits based on Role/Level.
+
+Example:
+
+Jr. Manager (Travel per KM) = ₹10/km
+
+Sr. Manager (Travel per KM) = ₹20/km
+
+Top Management (Travel per KM) = ₹30/km
+
+For Travel expenses specifically, enable a field to capture distance travelled via Google Maps integration (start & end location → auto distance calculation).
+
+Add checkboxes for:
+
+“Bill Mandatory” – makes bill upload required for that expense type.
+
+“Manager Approval Required” – marks expense type as needing approval before payment.
+
+2. Employee Expense Submission
+
+Employees can log their expenses under “My Expenses.”
+
+Each entry includes:
+
+Expense Type (dropdown)
+
+Date
+
+Amount (auto-limited by role & expense rules)
+
+Optional Google Maps distance (for Travel)
+
+Bill Upload (if mandatory)
+
+Remarks/Description
+
+Show total claim summary per employee and month.
+
+3. Manager Approval Workflow
+
+Reporting Managers have a view of their team’s submitted expenses.
+
+Each expense can be Approved or Rejected with remarks.
+
+Once approved, status updates automatically for Admin visibility.
+
+4. Super Admin / Sub-Admin View
+
+Under Expenses → Admin Dashboard, show all expense claims with filters:
+
+Status: Pending Manager Approval, Approved (Awaiting Disbursal), Disbursed/Paid.
+
+Employee, Department, Date Range, Expense Type.
+
+Allow export to Excel/PDF.
+
+Option to mark expenses as “Disbursed/Paid.”
+
+5. UI / UX
+
+Use the same design components and layout as the existing HRMS (consistent theme and UI behavior).
+
+Tabs:
+
+Expense Types
+
+My Expenses (Employee view)
+
+Manager Approvals
+
+Admin Overview
+
+Include status indicators and progress icons for each expense stage.
+
+Ensure all screens follow existing component style and navigation flow.

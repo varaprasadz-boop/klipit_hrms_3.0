@@ -150,3 +150,55 @@ Preferred communication style: Simple, everyday language.
 - **Database URL**: Required environment variable `DATABASE_URL` for PostgreSQL connection
 - **Migration Path**: `./migrations` directory for Drizzle migrations
 - **Current Status**: Infrastructure configured but using in-memory storage; database integration pending
+
+## Key Features
+
+### Payroll Management System
+
+The Payroll module provides comprehensive payroll processing capabilities including automatic generation, approval workflows, and payslip management.
+
+**Schema Design**:
+- `payroll_records` table: Core payroll records with employee association, pay period (month/year), working days tracking, salary calculations (gross pay, deductions, net pay), status workflow (pending/approved/rejected), approval metadata, and payslip publication status
+- `payroll_items` table: Individual salary components (earnings/deductions) linked to CTC components for detailed payroll breakdowns
+
+**API Endpoints**:
+- `GET /api/payroll`: List all payroll records for company with filtering support
+- `POST /api/payroll/generate`: Generate payroll for multiple employees for specified month/year
+- `GET /api/payroll/:id`: Get specific payroll record details
+- `PUT /api/payroll/:id/approve`: Approve pending payroll (requires company admin)
+- `PUT /api/payroll/:id/reject`: Reject pending payroll with reason (requires company admin)
+- `PUT /api/payroll/:id/publish`: Publish approved payslip to employee portal
+- `GET /api/payroll/:id/items`: Get detailed salary breakdown for payroll record
+- `DELETE /api/payroll/:id`: Delete pending or rejected payroll records
+
+**Payroll Generation Logic**:
+- Automatically calculates working days based on pay period
+- Retrieves attendance records for accurate present/absent day tracking
+- Integrates with employee CTC components for salary calculations
+- Supports monthly frequency components (basic salary, allowances, etc.)
+- Creates detailed payroll items for earnings and deductions
+- Prevents duplicate payroll generation for same employee/period
+
+**Approval Workflow**:
+- Three-state status: Pending → Approved/Rejected
+- Only approved payroll can be published to employees
+- Rejection requires reason for audit trail
+- Approval recorded with admin ID and timestamp
+- Published payslips immutable (cannot be deleted or modified)
+
+**Frontend Features**:
+- Summary statistics dashboard (total employees, total payout, status breakdown)
+- Multi-filter support (month, year, status, department)
+- Bulk employee selection for payroll generation
+- Visual payslip preview with professional formatting
+- One-click approve/reject/publish actions
+- Company logo and employee details display
+- Detailed earnings and deductions breakdown
+- Real-time status tracking and updates
+
+**Security & Validation**:
+- Company admin access required for all payroll operations
+- Company scoping enforced at data and API levels
+- Cannot delete approved or published payroll
+- Validation prevents invalid status transitions
+- Rejection reason mandatory for audit compliance
