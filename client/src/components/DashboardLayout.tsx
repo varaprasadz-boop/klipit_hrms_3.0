@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -46,6 +46,17 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
   const [location] = useLocation();
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
+  // Initialize all collapsible items as open by default
+  useEffect(() => {
+    const initialOpenState: Record<string, boolean> = {};
+    menuItems.forEach(item => {
+      if (item.subItems) {
+        initialOpenState[item.title] = true;
+      }
+    });
+    setOpenItems(initialOpenState);
+  }, [menuItems]);
+
   const toggleItem = (title: string) => {
     setOpenItems(prev => ({
       ...prev,
@@ -83,7 +94,7 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
                     item.subItems ? (
                       <Collapsible
                         key={item.title}
-                        open={openItems[item.title] || isItemActive(item)}
+                        open={openItems[item.title] !== false}
                         onOpenChange={() => toggleItem(item.title)}
                       >
                         <SidebarMenuItem>
@@ -91,7 +102,7 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
                             <SidebarMenuButton isActive={isItemActive(item)}>
                               <item.icon className="h-4 w-4" />
                               <span>{item.title}</span>
-                              <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${openItems[item.title] || isItemActive(item) ? 'rotate-180' : ''}`} />
+                              <ChevronDown className={`ml-auto h-4 w-4 transition-transform ${openItems[item.title] !== false ? 'rotate-180' : ''}`} />
                             </SidebarMenuButton>
                           </CollapsibleTrigger>
                           <CollapsibleContent>
