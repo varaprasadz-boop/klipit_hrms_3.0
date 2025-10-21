@@ -3,6 +3,7 @@ import {
   type Department, type InsertDepartment,
   type Designation, type InsertDesignation,
   type RoleLevel, type InsertRoleLevel,
+  type CtcComponent, type InsertCtcComponent,
   type Employee, type InsertEmployee,
   type AttendanceRecord, type InsertAttendanceRecord,
   type Shift, type InsertShift,
@@ -47,6 +48,13 @@ export interface IStorage {
   createRoleLevel(roleLevel: InsertRoleLevel): Promise<RoleLevel>;
   updateRoleLevel(id: string, updates: Partial<RoleLevel>): Promise<RoleLevel | undefined>;
   deleteRoleLevel(id: string): Promise<boolean>;
+
+  // CTC Components
+  getCtcComponent(id: string): Promise<CtcComponent | undefined>;
+  getCtcComponentsByCompany(companyId: string): Promise<CtcComponent[]>;
+  createCtcComponent(component: InsertCtcComponent): Promise<CtcComponent>;
+  updateCtcComponent(id: string, updates: Partial<CtcComponent>): Promise<CtcComponent | undefined>;
+  deleteCtcComponent(id: string): Promise<boolean>;
 
   // Employees
   getEmployee(id: string): Promise<Employee | undefined>;
@@ -98,6 +106,7 @@ export class MemStorage implements IStorage {
   private departments: Map<string, Department>;
   private designations: Map<string, Designation>;
   private rolesLevels: Map<string, RoleLevel>;
+  private ctcComponents: Map<string, CtcComponent>;
   private employees: Map<string, Employee>;
   private attendanceRecords: Map<string, AttendanceRecord>;
   private shifts: Map<string, Shift>;
@@ -111,6 +120,7 @@ export class MemStorage implements IStorage {
     this.departments = new Map();
     this.designations = new Map();
     this.rolesLevels = new Map();
+    this.ctcComponents = new Map();
     this.employees = new Map();
     this.attendanceRecords = new Map();
     this.shifts = new Map();
@@ -334,6 +344,39 @@ export class MemStorage implements IStorage {
 
   async deleteRoleLevel(id: string): Promise<boolean> {
     return this.rolesLevels.delete(id);
+  }
+
+  // CTC Component methods
+  async getCtcComponent(id: string): Promise<CtcComponent | undefined> {
+    return this.ctcComponents.get(id);
+  }
+
+  async getCtcComponentsByCompany(companyId: string): Promise<CtcComponent[]> {
+    return Array.from(this.ctcComponents.values()).filter((comp) => comp.companyId === companyId);
+  }
+
+  async createCtcComponent(insertComponent: InsertCtcComponent): Promise<CtcComponent> {
+    const id = randomUUID();
+    const component: CtcComponent = { 
+      ...insertComponent,
+      id,
+      isStandard: insertComponent.isStandard || false,
+      createdAt: new Date(),
+    };
+    this.ctcComponents.set(id, component);
+    return component;
+  }
+
+  async updateCtcComponent(id: string, updates: Partial<CtcComponent>): Promise<CtcComponent | undefined> {
+    const component = this.ctcComponents.get(id);
+    if (!component) return undefined;
+    const updated = { ...component, ...updates };
+    this.ctcComponents.set(id, updated);
+    return updated;
+  }
+
+  async deleteCtcComponent(id: string): Promise<boolean> {
+    return this.ctcComponents.delete(id);
   }
 
   // Employee methods
