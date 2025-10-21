@@ -51,6 +51,7 @@ import ExpenseTypesPage from "@/pages/masters/expense-types";
 import PayrollPage from "@/pages/payroll";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
 import TeamExpensesPage from "@/pages/manager/team-expenses";
+import ExpenseDashboardPage from "@/pages/admin/expense-dashboard";
 
 function Router() {
   return (
@@ -232,6 +233,11 @@ function Router() {
       <Route path="/dashboard/admin/payroll">
         <ProtectedRoute requireCompanyAdmin>
           <PayrollPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/expense-dashboard">
+        <ProtectedRoute requireCompanyAdmin>
+          <ExpenseDashboardPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
