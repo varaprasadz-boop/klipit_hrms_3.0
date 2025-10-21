@@ -50,6 +50,7 @@ import LeaveTypesPage from "@/pages/masters/leave-types";
 import ExpenseTypesPage from "@/pages/masters/expense-types";
 import PayrollPage from "@/pages/payroll";
 import PayslipsPage from "@/pages/payslips";
+import ReportsPage from "@/pages/reports";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
 import TeamExpensesPage from "@/pages/manager/team-expenses";
 import ExpenseDashboardPage from "@/pages/admin/expense-dashboard";
@@ -249,6 +250,11 @@ function Router() {
       <Route path="/dashboard/admin/expenses">
         <ProtectedRoute requireCompanyAdmin>
           <ExpenseDashboardPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/reports">
+        <ProtectedRoute requireCompanyAdmin>
+          <ReportsPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
