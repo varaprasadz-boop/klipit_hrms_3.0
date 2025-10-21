@@ -22,11 +22,11 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="platform-name">Platform Name</Label>
-              <Input id="platform-name" defaultValue="HRMSWorld" data-testid="input-platform-name" />
+              <Input id="platform-name" defaultValue="Klipit by Bova" data-testid="input-platform-name" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="support-email">Support Email</Label>
-              <Input id="support-email" type="email" defaultValue="support@hrmsworld.com" data-testid="input-support-email" />
+              <Input id="support-email" type="email" defaultValue="support@klipit.com" data-testid="input-support-email" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="default-timezone">Default Timezone</Label>

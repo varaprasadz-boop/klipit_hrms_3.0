@@ -4,10 +4,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { User, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import klipitLogo from "@assets/Klipit By Bova_1761061110237.png";
 
 export default function EmployeeLogin() {
   const [, setLocation] = useLocation();
@@ -57,7 +58,7 @@ export default function EmployeeLogin() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <User className="h-12 w-12 text-primary" />
+            <img src={klipitLogo} alt="Klipit by Bova" className="h-12 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Employee Login</CardTitle>
           <CardDescription className="text-center">

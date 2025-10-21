@@ -1,8 +1,8 @@
-# HRMSWorld - HR Management System
+# Klipit by Bova - HR Management System
 
 ## Overview
 
-HRMSWorld is a multi-tenant HR management system offering comprehensive functionalities such as attendance, leave, expense, payroll, employee lifecycle, and workflow approvals. Built with a full-stack TypeScript architecture, it features a three-tier user hierarchy (Super Admin, Company Admin, Employee) with role-based access control and supports white-label customization. The project aims to provide a robust, scalable solution for HR operations, enhancing efficiency and streamlining HR processes for businesses of varying sizes.
+Klipit by Bova is a multi-tenant HR management system offering comprehensive functionalities such as attendance, leave, expense, payroll, employee lifecycle, and workflow approvals. Built with a full-stack TypeScript architecture, it features a three-tier user hierarchy (Super Admin, Company Admin, Employee) with role-based access control and supports white-label customization. The project aims to provide a robust, scalable solution for HR operations, enhancing efficiency and streamlining HR processes for businesses of varying sizes.
 
 ## User Preferences
 
@@ -11,7 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## Demo Credentials
 
 ### Super Admin Login (`/login/superadmin`)
-- Email: `superadmin@hrmsworld.com`
+- Email: `superadmin@klipit.com`
 - Password: `123456`
 
 ### Company Admin Login (`/login/company`)
