@@ -55,6 +55,10 @@ import WorkflowsPage from "@/pages/admin/workflows";
 import LeavePage from "@/pages/admin/leave";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
 import EmployeeAttendancePage from "@/pages/employee/attendance";
+import EmployeeLeavePage from "@/pages/employee/leave";
+import EmployeeNoticeboardPage from "@/pages/employee/noticeboard";
+import EmployeePayslipsPage from "@/pages/employee/payslips";
+import EmployeeProfilePage from "@/pages/employee/profile";
 import TeamExpensesPage from "@/pages/manager/team-expenses";
 import ExpenseDashboardPage from "@/pages/admin/expense-dashboard";
 
@@ -165,6 +169,26 @@ function Router() {
       <Route path="/dashboard/employee/attendance">
         <ProtectedRoute requireAuth>
           <EmployeeAttendancePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/leave">
+        <ProtectedRoute requireAuth>
+          <EmployeeLeavePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/noticeboard">
+        <ProtectedRoute requireAuth>
+          <EmployeeNoticeboardPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/payslips">
+        <ProtectedRoute requireAuth>
+          <EmployeePayslipsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/profile">
+        <ProtectedRoute requireAuth>
+          <EmployeeProfilePage />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/manager/team-expenses">
