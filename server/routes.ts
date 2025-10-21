@@ -543,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== CTC COMPONENTS ====================
-  app.get("/api/ctc-components", requireAuth, async (req, res) => {
+  app.get("/api/ctc-components", requireCompanyAdmin, async (req, res) => {
     try {
       const session = getSession(req);
       if (!session) {
@@ -646,7 +646,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "CTC component not found" });
       }
 
-      res.json({ success: true });
+      res.status(204).send();
     } catch (error) {
       console.error("Delete CTC component error:", error);
       res.status(500).json({ error: "Internal server error" });

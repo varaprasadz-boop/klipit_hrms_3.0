@@ -82,6 +82,7 @@ const menuItems = [
       { title: "Departments", url: "/dashboard/admin/organization/departments" },
       { title: "Designations", url: "/dashboard/admin/organization/designations" },
       { title: "Roles & Levels", url: "/dashboard/admin/organization/roles-levels" },
+      { title: "CTC Components", url: "/dashboard/admin/organization/ctc-components" },
     ]
   },
   { title: "Attendance", url: "/dashboard/admin/attendance", icon: Clock },

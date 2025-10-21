@@ -111,10 +111,15 @@ export const ctcComponents = pgTable("ctc_components", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const insertCtcComponentSchema = createInsertSchema(ctcComponents).omit({
-  id: true,
-  createdAt: true,
-});
+export const insertCtcComponentSchema = createInsertSchema(ctcComponents)
+  .omit({
+    id: true,
+    companyId: true,
+    createdAt: true,
+  })
+  .extend({
+    type: z.enum(["payable", "deductable"]),
+  });
 
 export type InsertCtcComponent = z.infer<typeof insertCtcComponentSchema>;
 export type CtcComponent = typeof ctcComponents.$inferSelect;
