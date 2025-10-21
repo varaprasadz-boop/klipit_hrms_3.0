@@ -209,6 +209,7 @@ export const ctcComponentSchema = z.object({
   component: z.string(),
   amount: z.number(),
   frequency: z.string(),
+  type: z.string(),
 });
 
 export const assetSchema = z.object({

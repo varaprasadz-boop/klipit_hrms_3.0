@@ -197,6 +197,337 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.users.set(admin1Id, admin1);
+
+    // Create Departments
+    const deptEngId = randomUUID();
+    const deptEng: Department = {
+      id: deptEngId,
+      companyId: company1Id,
+      name: "Engineering",
+      description: "Software Development Team",
+      createdAt: new Date(),
+    };
+    this.departments.set(deptEngId, deptEng);
+
+    const deptHRId = randomUUID();
+    const deptHR: Department = {
+      id: deptHRId,
+      companyId: company1Id,
+      name: "Human Resources",
+      description: "HR Department",
+      createdAt: new Date(),
+    };
+    this.departments.set(deptHRId, deptHR);
+
+    const deptSalesId = randomUUID();
+    const deptSales: Department = {
+      id: deptSalesId,
+      companyId: company1Id,
+      name: "Sales",
+      description: "Sales and Marketing",
+      createdAt: new Date(),
+    };
+    this.departments.set(deptSalesId, deptSales);
+
+    // Create Demo Employees with CTC
+    const emp1Id = randomUUID();
+    const emp1: Employee = {
+      id: emp1Id,
+      companyId: company1Id,
+      firstName: "Sarah",
+      lastName: "Johnson",
+      email: "sarah.johnson@techsolutions.com",
+      phone: "+1-555-0101",
+      departmentId: deptEngId,
+      designationId: null,
+      roleLevelId: null,
+      status: "active",
+      joinDate: "2022-01-15",
+      exitDate: null,
+      attendanceType: "regular",
+      education: [],
+      experience: [],
+      documents: [],
+      ctc: [
+        { component: "Basic Salary", amount: 50000, frequency: "monthly", type: "payable" },
+        { component: "HRA", amount: 20000, frequency: "monthly", type: "payable" },
+        { component: "Transport Allowance", amount: 5000, frequency: "monthly", type: "payable" },
+        { component: "Provident Fund", amount: 6000, frequency: "monthly", type: "deductable" },
+        { component: "Professional Tax", amount: 200, frequency: "monthly", type: "deductable" },
+      ],
+      assets: [],
+      bank: null,
+      insurance: null,
+      statutory: null,
+      createdAt: new Date(),
+    };
+    this.employees.set(emp1Id, emp1);
+
+    const emp2Id = randomUUID();
+    const emp2: Employee = {
+      id: emp2Id,
+      companyId: company1Id,
+      firstName: "Michael",
+      lastName: "Chen",
+      email: "michael.chen@techsolutions.com",
+      phone: "+1-555-0102",
+      departmentId: deptEngId,
+      designationId: null,
+      roleLevelId: null,
+      status: "active",
+      joinDate: "2021-06-01",
+      exitDate: null,
+      attendanceType: "regular",
+      education: [],
+      experience: [],
+      documents: [],
+      ctc: [
+        { component: "Basic Salary", amount: 40000, frequency: "monthly", type: "payable" },
+        { component: "HRA", amount: 16000, frequency: "monthly", type: "payable" },
+        { component: "Transport Allowance", amount: 4000, frequency: "monthly", type: "payable" },
+        { component: "Provident Fund", amount: 4800, frequency: "monthly", type: "deductable" },
+        { component: "Professional Tax", amount: 200, frequency: "monthly", type: "deductable" },
+      ],
+      assets: [],
+      bank: null,
+      insurance: null,
+      statutory: null,
+      createdAt: new Date(),
+    };
+    this.employees.set(emp2Id, emp2);
+
+    const emp3Id = randomUUID();
+    const emp3: Employee = {
+      id: emp3Id,
+      companyId: company1Id,
+      firstName: "Emily",
+      lastName: "Rodriguez",
+      email: "emily.rodriguez@techsolutions.com",
+      phone: "+1-555-0103",
+      departmentId: deptSalesId,
+      designationId: null,
+      roleLevelId: null,
+      status: "active",
+      joinDate: "2020-09-15",
+      exitDate: null,
+      attendanceType: "regular",
+      education: [],
+      experience: [],
+      documents: [],
+      ctc: [
+        { component: "Basic Salary", amount: 45000, frequency: "monthly", type: "payable" },
+        { component: "HRA", amount: 18000, frequency: "monthly", type: "payable" },
+        { component: "Sales Incentive", amount: 10000, frequency: "monthly", type: "payable" },
+        { component: "Transport Allowance", amount: 4500, frequency: "monthly", type: "payable" },
+        { component: "Provident Fund", amount: 5400, frequency: "monthly", type: "deductable" },
+        { component: "Professional Tax", amount: 200, frequency: "monthly", type: "deductable" },
+      ],
+      assets: [],
+      bank: null,
+      insurance: null,
+      statutory: null,
+      createdAt: new Date(),
+    };
+    this.employees.set(emp3Id, emp3);
+
+    const emp4Id = randomUUID();
+    const emp4: Employee = {
+      id: emp4Id,
+      companyId: company1Id,
+      firstName: "David",
+      lastName: "Kumar",
+      email: "david.kumar@techsolutions.com",
+      phone: "+1-555-0104",
+      departmentId: deptHRId,
+      designationId: null,
+      roleLevelId: null,
+      status: "active",
+      joinDate: "2023-02-01",
+      exitDate: null,
+      attendanceType: "regular",
+      education: [],
+      experience: [],
+      documents: [],
+      ctc: [
+        { component: "Basic Salary", amount: 35000, frequency: "monthly", type: "payable" },
+        { component: "HRA", amount: 14000, frequency: "monthly", type: "payable" },
+        { component: "Transport Allowance", amount: 3500, frequency: "monthly", type: "payable" },
+        { component: "Provident Fund", amount: 4200, frequency: "monthly", type: "deductable" },
+        { component: "Professional Tax", amount: 200, frequency: "monthly", type: "deductable" },
+      ],
+      assets: [],
+      bank: null,
+      insurance: null,
+      statutory: null,
+      createdAt: new Date(),
+    };
+    this.employees.set(emp4Id, emp4);
+
+    // Get current date and calculate previous 2 months
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1; // 1-12
+    const currentYear = today.getFullYear();
+    
+    const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    
+    const twoMonthsAgo = lastMonth === 1 ? 12 : lastMonth - 1;
+    const twoMonthsAgoYear = lastMonth === 1 ? lastMonthYear - 1 : lastMonthYear;
+
+    // Create attendance records for past 2 months
+    const employees = [emp1Id, emp2Id, emp3Id, emp4Id];
+    const workingDays = 22;
+
+    employees.forEach((empId, index) => {
+      // Month -2 attendance (20-22 present days)
+      const presentDaysMonth2 = 20 + index;
+      for (let day = 1; day <= presentDaysMonth2; day++) {
+        const attId = randomUUID();
+        const dateStr = `${twoMonthsAgoYear}-${String(twoMonthsAgo).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const att: AttendanceRecord = {
+          id: attId,
+          companyId: company1Id,
+          employeeId: empId,
+          date: dateStr,
+          status: "present",
+          checkIn: new Date(twoMonthsAgoYear, twoMonthsAgo - 1, day, 9, 0),
+          checkOut: new Date(twoMonthsAgoYear, twoMonthsAgo - 1, day, 18, 0),
+          duration: null,
+          shiftId: null,
+          location: null,
+          notes: null,
+          createdAt: new Date(),
+        };
+        this.attendanceRecords.set(attId, att);
+      }
+
+      // Month -1 attendance (19-22 present days)
+      const presentDaysMonth1 = 19 + index;
+      for (let day = 1; day <= presentDaysMonth1; day++) {
+        const attId = randomUUID();
+        const dateStr = `${lastMonthYear}-${String(lastMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const att: AttendanceRecord = {
+          id: attId,
+          companyId: company1Id,
+          employeeId: empId,
+          date: dateStr,
+          status: "present",
+          checkIn: new Date(lastMonthYear, lastMonth - 1, day, 9, 0),
+          checkOut: new Date(lastMonthYear, lastMonth - 1, day, 18, 0),
+          duration: null,
+          shiftId: null,
+          location: null,
+          notes: null,
+          createdAt: new Date(),
+        };
+        this.attendanceRecords.set(attId, att);
+      }
+    });
+
+    // Create Payroll Records for past 2 months
+    // Month -2 Payrolls (All approved and published)
+    [
+      { empId: emp1Id, gross: 75000, deductions: 6200, net: 68800, present: 20 },
+      { empId: emp2Id, gross: 60000, deductions: 5000, net: 55000, present: 21 },
+      { empId: emp3Id, gross: 77500, deductions: 5600, net: 71900, present: 22 },
+      { empId: emp4Id, gross: 52500, deductions: 4400, net: 48100, present: 23 },
+    ].forEach((data, idx) => {
+      const payrollId = randomUUID();
+      const payroll: PayrollRecord = {
+        id: payrollId,
+        companyId: company1Id,
+        employeeId: data.empId,
+        month: twoMonthsAgo,
+        year: twoMonthsAgoYear,
+        status: "approved",
+        workingDays: workingDays,
+        presentDays: data.present,
+        absentDays: workingDays - data.present,
+        paidLeaveDays: 0,
+        overtimeHours: 0,
+        grossPay: data.gross,
+        totalDeductions: data.deductions,
+        netPay: data.net,
+        approvedBy: admin1Id,
+        approvedAt: new Date(twoMonthsAgoYear, twoMonthsAgo - 1, 28),
+        rejectionReason: null,
+        payslipPublished: true,
+        payslipPublishedAt: new Date(twoMonthsAgoYear, twoMonthsAgo - 1, 29),
+        createdAt: new Date(twoMonthsAgoYear, twoMonthsAgo - 1, 25),
+      };
+      this.payrollRecords.set(payrollId, payroll);
+
+      // Create payroll items based on employee CTC
+      const employee = this.employees.get(data.empId);
+      if (employee?.ctc) {
+        employee.ctc.forEach(ctcComp => {
+          const itemId = randomUUID();
+          const item: PayrollItem = {
+            id: itemId,
+            payrollId: payrollId,
+            ctcComponentId: null,
+            type: ctcComp.type === "payable" ? "earning" : "deduction",
+            name: ctcComp.component,
+            amount: ctcComp.amount,
+            description: null,
+            createdAt: new Date(),
+          };
+          this.payrollItems.set(itemId, item);
+        });
+      }
+    });
+
+    // Month -1 Payrolls (Mix of statuses)
+    [
+      { empId: emp1Id, gross: 75000, deductions: 6200, net: 68800, present: 19, status: "approved", published: true },
+      { empId: emp2Id, gross: 60000, deductions: 5000, net: 55000, present: 20, status: "approved", published: false },
+      { empId: emp3Id, gross: 77500, deductions: 5600, net: 71900, present: 21, status: "pending", published: false },
+      { empId: emp4Id, gross: 52500, deductions: 4400, net: 48100, present: 22, status: "rejected", published: false },
+    ].forEach((data, idx) => {
+      const payrollId = randomUUID();
+      const payroll: PayrollRecord = {
+        id: payrollId,
+        companyId: company1Id,
+        employeeId: data.empId,
+        month: lastMonth,
+        year: lastMonthYear,
+        status: data.status as "pending" | "approved" | "rejected",
+        workingDays: workingDays,
+        presentDays: data.present,
+        absentDays: workingDays - data.present,
+        paidLeaveDays: 0,
+        overtimeHours: 0,
+        grossPay: data.gross,
+        totalDeductions: data.deductions,
+        netPay: data.net,
+        approvedBy: data.status === "approved" ? admin1Id : null,
+        approvedAt: data.status === "approved" ? new Date(lastMonthYear, lastMonth - 1, 28) : null,
+        rejectionReason: data.status === "rejected" ? "Attendance discrepancy - requires verification" : null,
+        payslipPublished: data.published,
+        payslipPublishedAt: data.published ? new Date(lastMonthYear, lastMonth - 1, 29) : null,
+        createdAt: new Date(lastMonthYear, lastMonth - 1, 25),
+      };
+      this.payrollRecords.set(payrollId, payroll);
+
+      // Create payroll items
+      const employee = this.employees.get(data.empId);
+      if (employee?.ctc) {
+        employee.ctc.forEach(ctcComp => {
+          const itemId = randomUUID();
+          const item: PayrollItem = {
+            id: itemId,
+            payrollId: payrollId,
+            ctcComponentId: null,
+            type: ctcComp.type === "payable" ? "earning" : "deduction",
+            name: ctcComp.component,
+            amount: ctcComp.amount,
+            description: null,
+            createdAt: new Date(),
+          };
+          this.payrollItems.set(itemId, item);
+        });
+      }
+    });
   }
 
   // User methods
