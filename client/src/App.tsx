@@ -53,6 +53,7 @@ import PayslipsPage from "@/pages/payslips";
 import ReportsPage from "@/pages/reports";
 import WorkflowsPage from "@/pages/admin/workflows";
 import LeavePage from "@/pages/admin/leave";
+import AdminNoticeboardPage from "@/pages/admin/noticeboard";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
 import EmployeeAttendancePage from "@/pages/employee/attendance";
 import EmployeeLeavePage from "@/pages/employee/leave";
@@ -302,6 +303,11 @@ function Router() {
       <Route path="/dashboard/admin/leave">
         <ProtectedRoute requireCompanyAdmin>
           <LeavePage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/noticeboard">
+        <ProtectedRoute requireCompanyAdmin>
+          <AdminNoticeboardPage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
