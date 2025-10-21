@@ -25,7 +25,7 @@ export default function Home() {
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center">
-            <img src={klipitLogo} alt="Klipit by Bova" className="h-10 w-auto" />
+            <img src={klipitLogo} alt="Klipit by Bova" className="h-12 w-auto" />
           </div>
           <div className="flex gap-2 flex-wrap">
             <Link href="/login/company">

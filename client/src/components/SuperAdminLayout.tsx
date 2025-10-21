@@ -29,7 +29,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
               <div className="flex items-center gap-3">
-                <img src={klipitLogo} alt="Klipit by Bova" className="h-8 w-auto" />
+                <img src={klipitLogo} alt="Klipit by Bova" className="h-10 w-auto" />
                 <p className="text-sm text-muted-foreground">Super Administrator</p>
               </div>
             </div>
