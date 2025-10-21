@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -43,10 +50,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, CheckCircle2, XCircle, X } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { insertExpenseTypeSchema, type ExpenseType, type InsertExpenseType } from "@shared/schema";
+import { 
+  insertExpenseTypeSchema, 
+  type ExpenseType, 
+  type InsertExpenseType,
+  type RoleLevel 
+} from "@shared/schema";
 import { 
   LayoutDashboard, Users, Clock, Umbrella, Workflow, 
   Receipt, Megaphone, FileText, UserPlus, Shield, 
@@ -111,11 +124,7 @@ const formSchema = insertExpenseTypeSchema.extend({
   name: insertExpenseTypeSchema.shape.name.min(1, "Name is required"),
 });
 
-type FormData = {
-  code: string;
-  name: string;
-  requiresReceipt?: boolean;
-};
+type FormData = InsertExpenseType;
 
 export default function ExpenseTypesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -125,6 +134,10 @@ export default function ExpenseTypesPage() {
 
   const { data: expenseTypes, isLoading } = useQuery<ExpenseType[]>({
     queryKey: ["/api/expense-types"],
+  });
+
+  const { data: roleLevels } = useQuery<RoleLevel[]>({
+    queryKey: ["/api/role-levels"],
   });
 
   const createMutation = useMutation({
@@ -199,8 +212,16 @@ export default function ExpenseTypesPage() {
     defaultValues: {
       code: "",
       name: "",
-      requiresReceipt: false,
+      roleLevelLimits: [],
+      enableGoogleMaps: false,
+      billMandatory: false,
+      approvalRequired: true,
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "roleLevelLimits",
   });
 
   const onSubmit = (data: FormData) => {
@@ -216,7 +237,10 @@ export default function ExpenseTypesPage() {
     form.reset({
       code: expenseType.code,
       name: expenseType.name,
-      requiresReceipt: expenseType.requiresReceipt,
+      roleLevelLimits: expenseType.roleLevelLimits || [],
+      enableGoogleMaps: expenseType.enableGoogleMaps || false,
+      billMandatory: expenseType.billMandatory || false,
+      approvalRequired: expenseType.approvalRequired ?? true,
     });
     setIsDialogOpen(true);
   };
@@ -228,14 +252,40 @@ export default function ExpenseTypesPage() {
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
     setEditingExpenseType(null);
-    form.reset({ code: "", name: "", requiresReceipt: false });
+    form.reset({
+      code: "",
+      name: "",
+      roleLevelLimits: [],
+      enableGoogleMaps: false,
+      billMandatory: false,
+      approvalRequired: true,
+    });
   };
 
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open) {
       setEditingExpenseType(null);
-      form.reset({ code: "", name: "", requiresReceipt: false });
+      form.reset({
+        code: "",
+        name: "",
+        roleLevelLimits: [],
+        enableGoogleMaps: false,
+        billMandatory: false,
+        approvalRequired: true,
+      });
+    }
+  };
+
+  const addRoleLevelLimit = () => {
+    if (roleLevels && roleLevels.length > 0) {
+      const firstRole = roleLevels[0];
+      append({
+        roleLevelId: firstRole.id,
+        roleName: `${firstRole.role} - ${firstRole.level}`,
+        limitAmount: 0,
+        limitUnit: "fixed",
+      });
     }
   };
 
@@ -245,7 +295,7 @@ export default function ExpenseTypesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-3xl font-bold mb-1">Expense Types</h2>
-            <p className="text-muted-foreground">Manage different types of expenses</p>
+            <p className="text-muted-foreground">Manage different types of expenses with role-based limits</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
@@ -254,7 +304,7 @@ export default function ExpenseTypesPage() {
                 Add Expense Type
               </Button>
             </DialogTrigger>
-            <DialogContent data-testid="dialog-expense-type-form">
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-expense-type-form">
               <DialogHeader>
                 <DialogTitle>
                   {editingExpenseType ? "Edit Expense Type" : "Add Expense Type"}
@@ -301,29 +351,211 @@ export default function ExpenseTypesPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="requiresReceipt"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center space-x-2 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            data-testid="checkbox-expense-type-requiresReceipt"
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div>
-                          <FormLabel className="font-normal cursor-pointer">
-                            Requires Receipt
-                          </FormLabel>
-                          <FormDescription>
-                            Receipt attachment is mandatory for this expense type
-                          </FormDescription>
-                        </div>
-                      </FormItem>
+
+                  <div className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="enableGoogleMaps"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              data-testid="checkbox-expense-type-enableGoogleMaps"
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Enable Google Maps Distance Calculator
+                            </FormLabel>
+                            <FormDescription>
+                              Allow employees to calculate travel distance using Google Maps
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="billMandatory"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              data-testid="checkbox-expense-type-billMandatory"
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Bill/Receipt Mandatory
+                            </FormLabel>
+                            <FormDescription>
+                              Require bill/receipt attachment for this expense type
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="approvalRequired"
+                      render={({ field }) => (
+                        <FormItem className="flex items-center space-x-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              data-testid="checkbox-expense-type-approvalRequired"
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div>
+                            <FormLabel className="font-normal cursor-pointer">
+                              Approval Required
+                            </FormLabel>
+                            <FormDescription>
+                              Require manager approval for this expense type
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <FormLabel>Role-Level Limits</FormLabel>
+                        <FormDescription>
+                          Set spending limits for different role levels
+                        </FormDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addRoleLevelLimit}
+                        disabled={!roleLevels || roleLevels.length === 0}
+                        data-testid="button-add-role-limit"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Limit
+                      </Button>
+                    </div>
+
+                    {fields.length === 0 ? (
+                      <Card className="p-4 text-center text-sm text-muted-foreground">
+                        No role-level limits configured. Click "Add Limit" to create one.
+                      </Card>
+                    ) : (
+                      <div className="space-y-2">
+                        {fields.map((field, index) => (
+                          <Card key={field.id} className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                <h4 className="text-sm font-medium">Limit {index + 1}</h4>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => remove(index)}
+                                  data-testid={`button-remove-role-limit-${index}`}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <FormField
+                                  control={form.control}
+                                  name={`roleLevelLimits.${index}.roleLevelId`}
+                                  render={({ field: selectField }) => (
+                                    <FormItem>
+                                      <FormLabel>Role Level</FormLabel>
+                                      <Select
+                                        onValueChange={(value) => {
+                                          selectField.onChange(value);
+                                          const role = roleLevels?.find(r => r.id === value);
+                                          if (role) {
+                                            form.setValue(`roleLevelLimits.${index}.roleName`, `${role.role} - ${role.level}`);
+                                          }
+                                        }}
+                                        value={selectField.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger data-testid={`select-role-level-${index}`}>
+                                            <SelectValue placeholder="Select role" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {roleLevels?.map((role) => (
+                                            <SelectItem key={role.id} value={role.id}>
+                                              {role.role} - {role.level}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`roleLevelLimits.${index}.limitUnit`}
+                                  render={({ field: selectField }) => (
+                                    <FormItem>
+                                      <FormLabel>Limit Unit</FormLabel>
+                                      <Select
+                                        onValueChange={selectField.onChange}
+                                        value={selectField.value}
+                                      >
+                                        <FormControl>
+                                          <SelectTrigger data-testid={`select-limit-unit-${index}`}>
+                                            <SelectValue placeholder="Select unit" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          <SelectItem value="fixed">Fixed Amount</SelectItem>
+                                          <SelectItem value="per_km">Per Kilometer</SelectItem>
+                                          <SelectItem value="per_day">Per Day</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`roleLevelLimits.${index}.limitAmount`}
+                                  render={({ field: amountField }) => (
+                                    <FormItem className="col-span-2">
+                                      <FormLabel>Limit Amount</FormLabel>
+                                      <FormControl>
+                                        <Input
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          placeholder="Enter amount"
+                                          data-testid={`input-limit-amount-${index}`}
+                                          {...amountField}
+                                          onChange={(e) => amountField.onChange(parseFloat(e.target.value) || 0)}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
                     )}
-                  />
+                  </div>
+
                   <div className="flex justify-end gap-3">
                     <Button
                       type="button"
@@ -357,7 +589,10 @@ export default function ExpenseTypesPage() {
               <TableRow>
                 <TableHead>Code</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Requires Receipt</TableHead>
+                <TableHead>Role Limits</TableHead>
+                <TableHead>Google Maps</TableHead>
+                <TableHead>Bill Required</TableHead>
+                <TableHead>Approval</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -370,6 +605,15 @@ export default function ExpenseTypesPage() {
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-32" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-16" />
@@ -388,8 +632,27 @@ export default function ExpenseTypesPage() {
                     <TableCell data-testid={`text-expense-type-name-${expenseType.id}`}>
                       {expenseType.name}
                     </TableCell>
-                    <TableCell data-testid={`text-expense-type-requiresReceipt-${expenseType.id}`}>
-                      {expenseType.requiresReceipt ? (
+                    <TableCell data-testid={`text-expense-type-limits-${expenseType.id}`}>
+                      <Badge variant="secondary">
+                        {expenseType.roleLevelLimits?.length || 0} limit(s)
+                      </Badge>
+                    </TableCell>
+                    <TableCell data-testid={`text-expense-type-googleMaps-${expenseType.id}`}>
+                      {expenseType.enableGoogleMaps ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </TableCell>
+                    <TableCell data-testid={`text-expense-type-billMandatory-${expenseType.id}`}>
+                      {expenseType.billMandatory ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </TableCell>
+                    <TableCell data-testid={`text-expense-type-approval-${expenseType.id}`}>
+                      {expenseType.approvalRequired ? (
                         <CheckCircle2 className="h-4 w-4 text-green-600" />
                       ) : (
                         <XCircle className="h-4 w-4 text-muted-foreground" />
@@ -419,7 +682,7 @@ export default function ExpenseTypesPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No expense types found. Create one to get started.
                   </TableCell>
                 </TableRow>
