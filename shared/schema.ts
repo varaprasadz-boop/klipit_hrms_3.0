@@ -471,3 +471,53 @@ export const insertExpenseClaimItemSchema = createInsertSchema(expenseClaimItems
 
 export type InsertExpenseClaimItem = z.infer<typeof insertExpenseClaimItemSchema>;
 export type ExpenseClaimItem = typeof expenseClaimItems.$inferSelect;
+
+// Workflows (Task/Target Assignment)
+export const workflows = pgTable("workflows", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(), // 'task' or 'target'
+  departmentId: varchar("department_id").references(() => departments.id),
+  assignedTo: varchar("assigned_to").notNull().references(() => users.id),
+  assignedBy: varchar("assigned_by").notNull().references(() => users.id),
+  deadline: date("deadline").notNull(),
+  priority: text("priority").notNull().default("medium"), // 'low', 'medium', 'high', 'urgent'
+  status: text("status").notNull().default("pending"), // 'pending', 'in_progress', 'completed', 'cancelled'
+  progress: integer("progress").notNull().default(0), // 0-100
+  notes: text("notes"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertWorkflowSchema = createInsertSchema(workflows).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  companyId: true,
+  assignedBy: true,
+}).extend({
+  type: z.enum(["task", "target"]),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional(),
+  progress: z.number().min(0).max(100).optional(),
+});
+
+export const updateWorkflowSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  type: z.enum(["task", "target"]).optional(),
+  departmentId: z.string().optional(),
+  assignedTo: z.string().optional(),
+  deadline: z.string().optional(),
+  priority: z.enum(["low", "medium", "high", "urgent"]).optional(),
+  status: z.enum(["pending", "in_progress", "completed", "cancelled"]).optional(),
+  progress: z.number().min(0).max(100).optional(),
+  notes: z.string().optional(),
+});
+
+export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
+export type UpdateWorkflow = z.infer<typeof updateWorkflowSchema>;
+export type Workflow = typeof workflows.$inferSelect;
