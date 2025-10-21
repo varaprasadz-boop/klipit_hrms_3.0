@@ -30,7 +30,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { 
   LayoutDashboard, Clock, Umbrella, Workflow, 
   Receipt, Megaphone, FileText, UserPlus as UserPlusIcon, Shield, 
-  BarChart3, Settings, Target, Building2 as Building2Icon, Star as StarIcon
+  BarChart3, Settings, Target, Building2 as Building2Icon, Star as StarIcon, DollarSign
 } from "lucide-react";
 import {
   Dialog,
@@ -88,7 +88,7 @@ const menuItems = [
   { title: "Attendance", url: "/dashboard/admin/attendance", icon: Clock },
   { title: "Leave", url: "/dashboard/admin/leave", icon: Umbrella },
   { title: "Workflows", url: "/dashboard/admin/workflows", icon: Workflow },
-  { title: "Expenses", url: "/dashboard/admin/expenses", icon: Receipt },
+  { title: "Expense Dashboard", url: "/dashboard/admin/expense-dashboard", icon: Receipt },
   { 
     title: "Masters", 
     icon: StarIcon,
@@ -100,6 +100,7 @@ const menuItems = [
     ]
   },
   { title: "Noticeboard", url: "/dashboard/admin/noticeboard", icon: Megaphone },
+  { title: "Payroll", url: "/dashboard/admin/payroll", icon: DollarSign },
   { title: "Payslips", url: "/dashboard/admin/payslips", icon: FileText },
   { title: "Lifecycle", url: "/dashboard/admin/lifecycle", icon: UserPlusIcon },
   { title: "Roles", url: "/dashboard/admin/roles", icon: Shield },
