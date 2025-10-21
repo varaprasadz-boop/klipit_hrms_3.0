@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -119,12 +119,17 @@ type PayrollWithEmployee = PayrollRecord & {
 
 export default function PayslipsPage() {
   const { toast } = useToast();
-  const [selectedMonth, setSelectedMonth] = useState<string>("");
+  const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPayslips, setSelectedPayslips] = useState<string[]>([]);
   const [viewingPayslip, setViewingPayslip] = useState<PayrollWithEmployee | null>(null);
+
+  // Clear selections when filters change
+  useEffect(() => {
+    setSelectedPayslips([]);
+  }, [selectedMonth, selectedYear, selectedDepartment, searchQuery]);
 
   const { data: payrollRecords, isLoading: isLoadingPayroll } = useQuery<PayrollRecord[]>({
     queryKey: ["/api/payroll"],
@@ -149,12 +154,14 @@ export default function PayslipsPage() {
 
   // Apply filters
   const filteredPayslips = payslipsWithEmployees.filter(payslip => {
-    if (selectedMonth && payslip.month !== parseInt(selectedMonth)) return false;
+    if (selectedMonth !== "all" && payslip.month !== parseInt(selectedMonth)) return false;
     if (selectedYear && payslip.year !== parseInt(selectedYear)) return false;
-    if (selectedDepartment && payslip.employee?.department !== selectedDepartment) return false;
-    if (searchQuery && !payslip.employee?.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !payslip.employee?.employeeCode?.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
+    if (selectedDepartment !== "all" && payslip.employee?.department !== selectedDepartment) return false;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const nameMatch = payslip.employee?.name?.toLowerCase().includes(query) || false;
+      const codeMatch = payslip.employee?.employeeCode?.toLowerCase().includes(query) || false;
+      if (!nameMatch && !codeMatch) return false;
     }
     return true;
   });
@@ -353,7 +360,7 @@ export default function PayslipsPage() {
                     <SelectValue placeholder="All months" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All months</SelectItem>
+                    <SelectItem value="all">All months</SelectItem>
                     {MONTHS.map(month => (
                       <SelectItem key={month.value} value={month.value}>
                         {month.label}
@@ -386,7 +393,7 @@ export default function PayslipsPage() {
                     <SelectValue placeholder="All departments" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All departments</SelectItem>
+                    <SelectItem value="all">All departments</SelectItem>
                     {departments?.map(dept => (
                       <SelectItem key={dept.id} value={dept.name}>
                         {dept.name}
