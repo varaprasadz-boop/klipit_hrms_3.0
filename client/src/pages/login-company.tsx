@@ -36,7 +36,11 @@ export default function CompanyLogin() {
 
       login(data.user, data.token);
       toast({ title: "Login successful" });
-      setLocation("/dashboard/admin");
+      
+      // Small delay to ensure state updates before redirect
+      setTimeout(() => {
+        setLocation("/dashboard/admin");
+      }, 100);
     } catch (error: any) {
       toast({
         title: "Login failed",

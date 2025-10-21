@@ -36,7 +36,11 @@ export default function SuperAdminLogin() {
 
       login(data.user, data.token);
       toast({ title: "Login successful" });
-      setLocation("/superadmin");
+      
+      // Small delay to ensure state updates before redirect
+      setTimeout(() => {
+        setLocation("/superadmin");
+      }, 100);
     } catch (error: any) {
       toast({
         title: "Login failed",
