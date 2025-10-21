@@ -226,6 +226,11 @@ function Router() {
           <RolesLevelsPage />
         </ProtectedRoute>
       </Route>
+      <Route path="/dashboard/admin/roles">
+        <ProtectedRoute requireCompanyAdmin>
+          <RolesLevelsPage />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/admin/organization/ctc-components">
         <ProtectedRoute requireCompanyAdmin>
           <CtcComponentsPage />
