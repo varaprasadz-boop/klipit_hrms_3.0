@@ -17,6 +17,8 @@ import {
   insertExpenseClaimSchema,
   updateExpenseClaimSchema,
   insertExpenseClaimItemSchema,
+  insertWorkflowSchema,
+  updateWorkflowSchema,
   type ExpenseClaim,
   UserRole 
 } from "@shared/schema";
@@ -2140,6 +2142,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error("Delete expense claim item error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Workflow Routes
+  app.get("/api/workflows", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      let workflows;
+      if (session.role === UserRole.SUPER_ADMIN) {
+        workflows = await storage.getWorkflowsByCompany(session.companyId || "");
+      } else if (session.role === UserRole.COMPANY_ADMIN) {
+        // Company Admin can see all workflows in their company
+        workflows = await storage.getWorkflowsByCompany(session.companyId!);
+      } else {
+        // Employees see workflows assigned to them or created by them
+        const assignedToMe = await storage.getWorkflowsByEmployee(session.userId);
+        const createdByMe = await storage.getWorkflowsByAssigner(session.userId);
+        workflows = [...assignedToMe, ...createdByMe];
+      }
+
+      res.json(workflows);
+    } catch (error) {
+      console.error("Get workflows error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/workflows/:id", requireAuth, async (req, res) => {
+    try {
+      const workflow = await storage.getWorkflow(req.params.id);
+      
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== workflow.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(workflow);
+    } catch (error) {
+      console.error("Get workflow error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/workflows", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Only Company Admin or managers can create workflows
+      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "Only admins and managers can create workflows" });
+      }
+
+      const workflowData = insertWorkflowSchema.parse(req.body);
+      
+      const workflow = await storage.createWorkflow({
+        ...workflowData,
+        companyId: session.companyId!,
+        assignedBy: session.userId,
+      });
+
+      res.status(201).json(workflow);
+    } catch (error) {
+      console.error("Create workflow error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/workflows/:id", requireAuth, async (req, res) => {
+    try {
+      const workflow = await storage.getWorkflow(req.params.id);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== workflow.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const updates = updateWorkflowSchema.parse(req.body);
+      const updated = await storage.updateWorkflow(req.params.id, updates);
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update workflow error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/workflows/:id", requireAuth, async (req, res) => {
+    try {
+      const workflow = await storage.getWorkflow(req.params.id);
+      if (!workflow) {
+        return res.status(404).json({ error: "Workflow not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== workflow.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Only creator or admin can delete
+      if (workflow.assignedBy !== session.userId && session.role !== UserRole.COMPANY_ADMIN) {
+        return res.status(403).json({ error: "Only workflow creator or admin can delete" });
+      }
+
+      const success = await storage.deleteWorkflow(req.params.id);
+      res.json({ success });
+    } catch (error) {
+      console.error("Delete workflow error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
