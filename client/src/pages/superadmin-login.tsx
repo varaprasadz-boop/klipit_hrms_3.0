@@ -58,7 +58,7 @@ export default function SuperAdminLogin() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <img src={klipitLogo} alt="Klipit by Bova" className="h-12 w-auto" />
+            <img src={klipitLogo} alt="Klipit by Bova" className="h-16 w-auto" />
           </div>
           <CardTitle className="text-2xl text-center">
             Super Admin Login

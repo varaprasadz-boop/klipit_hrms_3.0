@@ -80,7 +80,7 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
           <SidebarContent>
             <div className="p-4 border-b">
               <div className="flex items-center justify-center">
-                <img src={klipitLogo} alt="Klipit by Bova" className="h-10 w-auto" />
+                <img src={klipitLogo} alt="Klipit by Bova" className="h-14 w-auto" />
               </div>
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 {userType === "admin" ? "Admin Dashboard" : "Employee Portal"}
