@@ -52,6 +52,7 @@ import PayrollPage from "@/pages/payroll";
 import PayslipsPage from "@/pages/payslips";
 import ReportsPage from "@/pages/reports";
 import WorkflowsPage from "@/pages/admin/workflows";
+import LeavePage from "@/pages/admin/leave";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
 import TeamExpensesPage from "@/pages/manager/team-expenses";
 import ExpenseDashboardPage from "@/pages/admin/expense-dashboard";
@@ -261,6 +262,11 @@ function Router() {
       <Route path="/dashboard/admin/workflows">
         <ProtectedRoute requireCompanyAdmin>
           <WorkflowsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/leave">
+        <ProtectedRoute requireCompanyAdmin>
+          <LeavePage />
         </ProtectedRoute>
       </Route>
       <Route component={NotFound} />
