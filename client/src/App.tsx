@@ -43,6 +43,7 @@ import Lifecycle from "@/pages/lifecycle";
 import DepartmentsPage from "@/pages/organization/departments";
 import DesignationsPage from "@/pages/organization/designations";
 import RolesLevelsPage from "@/pages/organization/roles-levels";
+import CtcComponentsPage from "@/pages/organization/ctc-components";
 import ShiftsPage from "@/pages/masters/shifts";
 import HolidaysPage from "@/pages/masters/holidays";
 import LeaveTypesPage from "@/pages/masters/leave-types";
@@ -175,6 +176,11 @@ function Router() {
       <Route path="/dashboard/admin/organization/roles-levels">
         <ProtectedRoute requireCompanyAdmin>
           <RolesLevelsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/organization/ctc-components">
+        <ProtectedRoute requireCompanyAdmin>
+          <CtcComponentsPage />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin/settings" component={SettingsPage} />
