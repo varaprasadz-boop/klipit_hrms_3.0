@@ -101,6 +101,24 @@ export const insertRoleLevelSchema = createInsertSchema(rolesLevels).omit({
 export type InsertRoleLevel = z.infer<typeof insertRoleLevelSchema>;
 export type RoleLevel = typeof rolesLevels.$inferSelect;
 
+// CTC Components (Payables and Deductables)
+export const ctcComponents = pgTable("ctc_components", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'payable' or 'deductable'
+  isStandard: boolean("is_standard").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertCtcComponentSchema = createInsertSchema(ctcComponents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertCtcComponent = z.infer<typeof insertCtcComponentSchema>;
+export type CtcComponent = typeof ctcComponents.$inferSelect;
+
 // Education, Experience, Documents, CTC, Assets, Bank, Insurance, Statutory schemas
 export const educationSchema = z.object({
   degree: z.string(),
