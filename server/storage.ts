@@ -232,6 +232,67 @@ export class MemStorage implements IStorage {
     };
     this.users.set(admin1Id, admin1);
 
+    // Create Employee User Accounts
+    const user1Id = randomUUID();
+    const user1: User = {
+      id: user1Id,
+      email: "sarah.johnson@techsolutions.com",
+      password: "123456",
+      name: "Sarah Johnson",
+      role: UserRole.EMPLOYEE,
+      companyId: company1Id,
+      department: "Engineering",
+      position: "Senior Engineer",
+      status: "active",
+      createdAt: new Date(),
+    };
+    this.users.set(user1Id, user1);
+
+    const user2Id = randomUUID();
+    const user2: User = {
+      id: user2Id,
+      email: "michael.chen@techsolutions.com",
+      password: "123456",
+      name: "Michael Chen",
+      role: UserRole.EMPLOYEE,
+      companyId: company1Id,
+      department: "Engineering",
+      position: "Engineer",
+      status: "active",
+      createdAt: new Date(),
+    };
+    this.users.set(user2Id, user2);
+
+    const user3Id = randomUUID();
+    const user3: User = {
+      id: user3Id,
+      email: "emily.rodriguez@techsolutions.com",
+      password: "123456",
+      name: "Emily Rodriguez",
+      role: UserRole.EMPLOYEE,
+      companyId: company1Id,
+      department: "Sales",
+      position: "Sales Manager",
+      status: "active",
+      createdAt: new Date(),
+    };
+    this.users.set(user3Id, user3);
+
+    const user4Id = randomUUID();
+    const user4: User = {
+      id: user4Id,
+      email: "david.kumar@techsolutions.com",
+      password: "123456",
+      name: "David Kumar",
+      role: UserRole.EMPLOYEE,
+      companyId: company1Id,
+      department: "Human Resources",
+      position: "HR Coordinator",
+      status: "active",
+      createdAt: new Date(),
+    };
+    this.users.set(user4Id, user4);
+
     // Create Departments
     const deptEngId = randomUUID();
     const deptEng: Department = {

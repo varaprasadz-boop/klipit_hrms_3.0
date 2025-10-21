@@ -8,6 +8,34 @@ HRMSWorld is a multi-tenant HR management system offering comprehensive function
 
 Preferred communication style: Simple, everyday language.
 
+## Demo Credentials
+
+### Super Admin Login (`/login/superadmin`)
+- Email: `superadmin@hrmsworld.com`
+- Password: `123456`
+
+### Company Admin Login (`/login/company`)
+- Email: `admin@techsolutions.com`
+- Password: `123456`
+- Company: Tech Solutions Inc
+
+### Employee Logins (`/login/employee`)
+1. **Sarah Johnson** (Engineering - Senior Engineer)
+   - Email: `sarah.johnson@techsolutions.com`
+   - Password: `123456`
+
+2. **Michael Chen** (Engineering - Engineer)
+   - Email: `michael.chen@techsolutions.com`
+   - Password: `123456`
+
+3. **Emily Rodriguez** (Sales - Sales Manager)
+   - Email: `emily.rodriguez@techsolutions.com`
+   - Password: `123456`
+
+4. **David Kumar** (HR - HR Coordinator)
+   - Email: `david.kumar@techsolutions.com`
+   - Password: `123456`
+
 ## System Architecture
 
 ### Core Design Principles
