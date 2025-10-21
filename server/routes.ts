@@ -7,6 +7,7 @@ import {
   insertDepartmentSchema,
   insertDesignationSchema,
   insertRoleLevelSchema,
+  insertCtcComponentSchema,
   insertEmployeeSchema,
   insertAttendanceRecordSchema,
   insertShiftSchema,
@@ -537,6 +538,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error("Delete role-level error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== CTC COMPONENTS ====================
+  app.get("/api/ctc-components", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      let components;
+      if (session.role === UserRole.SUPER_ADMIN) {
+        const allCompanies = await storage.getAllCompanies();
+        const allComponents = await Promise.all(
+          allCompanies.map(company => storage.getCtcComponentsByCompany(company.id))
+        );
+        components = allComponents.flat();
+      } else {
+        if (!session.companyId) {
+          return res.status(400).json({ error: "User not associated with a company" });
+        }
+        components = await storage.getCtcComponentsByCompany(session.companyId);
+      }
+
+      res.json(components);
+    } catch (error) {
+      console.error("Get CTC components error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/ctc-components", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const componentData = insertCtcComponentSchema.parse(req.body);
+      
+      if (session.role !== UserRole.SUPER_ADMIN) {
+        if (!session.companyId) {
+          return res.status(400).json({ error: "User not associated with a company" });
+        }
+        componentData.companyId = session.companyId;
+      }
+
+      const component = await storage.createCtcComponent(componentData);
+      res.status(201).json(component);
+    } catch (error) {
+      console.error("Create CTC component error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.put("/api/ctc-components/:id", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const existing = await storage.getCtcComponent(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "CTC component not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const updates = req.body;
+      const component = await storage.updateCtcComponent(req.params.id, updates);
+      
+      if (!component) {
+        return res.status(404).json({ error: "CTC component not found" });
+      }
+
+      res.json(component);
+    } catch (error) {
+      console.error("Update CTC component error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/ctc-components/:id", requireCompanyAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const existing = await storage.getCtcComponent(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "CTC component not found" });
+      }
+
+      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const success = await storage.deleteCtcComponent(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: "CTC component not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete CTC component error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
