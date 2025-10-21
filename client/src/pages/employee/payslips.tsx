@@ -194,7 +194,7 @@ export default function EmployeePayslipsPage() {
                         </div>
                         <div>
                           <p className="text-muted-foreground">Deductions</p>
-                          <p className="font-medium text-red-600 dark:text-red-400">₹{payslip.deductions.toLocaleString()}</p>
+                          <p className="font-medium text-red-600 dark:text-red-400">₹{payslip.totalDeductions.toLocaleString()}</p>
                         </div>
                         <div>
                           <p className="text-muted-foreground">Published On</p>

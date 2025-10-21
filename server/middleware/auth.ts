@@ -3,6 +3,7 @@ import { UserRole } from "@shared/schema";
 
 interface SessionData {
   userId: string;
+  email: string;
   role: string;
   companyId: string | null;
 }
@@ -15,9 +16,9 @@ export function getSession(req: Request): SessionData | undefined {
   return sessions.get(token);
 }
 
-export function createSession(userId: string, role: string, companyId: string | null): string {
+export function createSession(userId: string, email: string, role: string, companyId: string | null): string {
   const token = `session_${Date.now()}_${Math.random().toString(36)}`;
-  sessions.set(token, { userId, role, companyId });
+  sessions.set(token, { userId, email, role, companyId });
   return token;
 }
 

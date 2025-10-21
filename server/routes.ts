@@ -52,7 +52,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Account is not active" });
       }
 
-      const token = createSession(user.id, user.role, user.companyId);
+      const token = createSession(user.id, user.email, user.role, user.companyId);
 
       res.json({
         token,
@@ -660,7 +660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== PAYROLL ====================
-  app.get("/api/payroll", requireCompanyAdmin, async (req, res) => {
+  app.get("/api/payroll", requireAuth, async (req, res) => {
     try {
       const session = getSession(req);
       if (!session) {
@@ -671,6 +671,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "User not associated with a company" });
       }
 
+      if (session.role === UserRole.EMPLOYEE) {
+        // For employees, only return their own published payslips
+        const employees = await storage.getEmployeesByCompany(session.companyId);
+        const employee = employees.find(emp => emp.email === session.email);
+        
+        if (!employee) {
+          return res.json([]); // No employee record yet
+        }
+        
+        const allPayrolls = await storage.getPayrollRecordsByCompany(session.companyId);
+        const employeePayrolls = allPayrolls.filter(p => 
+          p.employeeId === employee.id && p.payslipPublished === true
+        );
+        return res.json(employeePayrolls);
+      }
+
+      // Only company admin and super admin can see all payroll records
+      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      // Company admin and super admin get all records
       const payrollRecords = await storage.getPayrollRecordsByCompany(session.companyId);
       res.json(payrollRecords);
     } catch (error) {
@@ -1085,7 +1107,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           allCompanies.map(company => storage.getAttendanceRecordsByCompany(company.id))
         );
         records = allRecords.flat();
+      } else if (session.role === UserRole.EMPLOYEE) {
+        // For employees, only return their own attendance records
+        // Find employee by email (users and employees linked by email)
+        if (!session.companyId) {
+          return res.status(400).json({ error: "User not associated with a company" });
+        }
+        const employees = await storage.getEmployeesByCompany(session.companyId);
+        const employee = employees.find(emp => emp.email === session.email);
+        
+        if (!employee) {
+          return res.json([]); // No employee record yet
+        }
+        
+        records = await storage.getAttendanceRecordsByEmployee(employee.id);
       } else {
+        // Company admin gets all company records
         if (!session.companyId) {
           return res.status(400).json({ error: "User not associated with a company" });
         }

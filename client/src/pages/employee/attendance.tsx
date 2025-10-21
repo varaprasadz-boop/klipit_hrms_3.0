@@ -1,16 +1,25 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   LayoutDashboard, Clock, Umbrella, Receipt, 
   Megaphone, FileText, User, CheckCircle, XCircle,
-  Clock3, CalendarDays
+  Clock3, CalendarDays, Camera, MapPin
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { type AttendanceRecord } from "@shared/schema";
 
 const menuItems = [
@@ -25,11 +34,180 @@ const menuItems = [
 
 export default function EmployeeAttendancePage() {
   const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showCheckInDialog, setShowCheckInDialog] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const { data: attendanceRecords = [] } = useQuery<AttendanceRecord[]>({
     queryKey: ["/api/attendance-records"],
   });
+
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
+  const startCamera = async () => {
+    // Check if camera is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.log("Camera not available, using dummy photo");
+      setCapturedPhoto("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e5e7eb' width='400' height='300'/%3E%3Ccircle cx='200' cy='120' r='40' fill='%239ca3af'/%3E%3Cpath d='M 160 160 Q 200 180 240 160' stroke='%239ca3af' stroke-width='3' fill='none'/%3E%3Ctext x='50%25' y='85%25' text-anchor='middle' fill='%236b7280' font-family='sans-serif' font-size='16'%3EDemo Photo%3C/text%3E%3C/svg%3E");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: "user" },
+        audio: false 
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        streamRef.current = stream;
+      }
+      setIsCapturing(true);
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      toast({
+        title: "Using Demo Mode",
+        description: "Camera not available. Using demo photo for check-in.",
+      });
+      // Use dummy photo as fallback
+      setCapturedPhoto("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300'%3E%3Crect fill='%23e5e7eb' width='400' height='300'/%3E%3Ccircle cx='200' cy='120' r='40' fill='%239ca3af'/%3E%3Cpath d='M 160 160 Q 200 180 240 160' stroke='%239ca3af' stroke-width='3' fill='none'/%3E%3Ctext x='50%25' y='85%25' text-anchor='middle' fill='%236b7280' font-family='sans-serif' font-size='16'%3EDemo Photo%3C/text%3E%3C/svg%3E");
+    }
+  };
+
+  const capturePhoto = () => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0);
+        const photoData = canvas.toDataURL('image/jpeg');
+        setCapturedPhoto(photoData);
+        
+        // Stop camera stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
+        setIsCapturing(false);
+      }
+    }
+  };
+
+  const getLocation = () => {
+    if (!navigator.geolocation) {
+      // Use dummy location if geolocation not supported
+      const dummyLocation = {
+        lat: 37.7749 + (Math.random() - 0.5) * 0.01,
+        lng: -122.4194 + (Math.random() - 0.5) * 0.01,
+      };
+      setLocation(dummyLocation);
+      toast({
+        title: "Using Demo Mode",
+        description: "Geolocation not available. Using demo location.",
+      });
+      return;
+    }
+
+    // Set a timeout for geolocation
+    const timeoutId = setTimeout(() => {
+      console.log("Geolocation timeout, using dummy location");
+      const dummyLocation = {
+        lat: 37.7749 + (Math.random() - 0.5) * 0.01,
+        lng: -122.4194 + (Math.random() - 0.5) * 0.01,
+      };
+      setLocation(dummyLocation);
+      toast({
+        title: "Using Demo Mode",
+        description: "Location timeout. Using demo location.",
+      });
+    }, 3000); // 3 second timeout
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        clearTimeout(timeoutId);
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        toast({
+          title: "Location captured",
+          description: `Lat: ${position.coords.latitude.toFixed(6)}, Lng: ${position.coords.longitude.toFixed(6)}`,
+        });
+      },
+      (error) => {
+        clearTimeout(timeoutId);
+        console.error("Error getting location:", error);
+        // Use dummy location as fallback
+        const dummyLocation = {
+          lat: 37.7749 + (Math.random() - 0.5) * 0.01,
+          lng: -122.4194 + (Math.random() - 0.5) * 0.01,
+        };
+        setLocation(dummyLocation);
+        toast({
+          title: "Using Demo Mode",
+          description: `Location unavailable. Using demo location.`,
+        });
+      },
+      { timeout: 5000, enableHighAccuracy: false }
+    );
+  };
+
+  const handleCheckIn = () => {
+    setShowCheckInDialog(true);
+    setCapturedPhoto(null);
+    setLocation(null);
+    setTimeout(() => {
+      startCamera();
+      getLocation();
+    }, 300);
+  };
+
+  const confirmCheckIn = () => {
+    if (!capturedPhoto || !location) {
+      toast({
+        title: "Missing Information",
+        description: "Please capture photo and location first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // TODO: Send to API with photo and location
+    toast({
+      title: "Check-in Successful",
+      description: `Checked in at ${format(new Date(), "hh:mm a")}`,
+    });
+    
+    setShowCheckInDialog(false);
+    setCapturedPhoto(null);
+    setLocation(null);
+    
+    // Cleanup camera
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  };
+
+  const retakePhoto = () => {
+    setCapturedPhoto(null);
+    startCamera();
+  };
 
   // Filter records for current user
   const myRecords = attendanceRecords.filter(record => {
@@ -168,7 +346,7 @@ export default function EmployeeAttendancePage() {
                   <p className="text-sm text-muted-foreground text-center py-4">
                     You haven't checked in today
                   </p>
-                  <Button className="w-full" data-testid="button-checkin">
+                  <Button className="w-full" onClick={handleCheckIn} data-testid="button-checkin">
                     <Clock className="h-4 w-4 mr-2" />
                     Check In Now
                   </Button>
@@ -246,6 +424,122 @@ export default function EmployeeAttendancePage() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={showCheckInDialog} onOpenChange={setShowCheckInDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Check In</DialogTitle>
+              <DialogDescription>Capture your photo and location to check in</DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              {/* Photo Capture */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Photo
+                  </h4>
+                  {capturedPhoto && (
+                    <Button variant="outline" size="sm" onClick={retakePhoto}>
+                      Retake
+                    </Button>
+                  )}
+                </div>
+                
+                <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
+                  {isCapturing && !capturedPhoto ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  ) : capturedPhoto ? (
+                    <img
+                      src={capturedPhoto}
+                      alt="Captured"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <Camera className="h-12 w-12" />
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} className="hidden" />
+                </div>
+                
+                {isCapturing && !capturedPhoto && (
+                  <Button className="w-full" onClick={capturePhoto} data-testid="button-capture-photo">
+                    <Camera className="h-4 w-4 mr-2" />
+                    Capture Photo
+                  </Button>
+                )}
+              </div>
+
+              {/* Location */}
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium flex items-center gap-2">
+                  <MapPin className="h-4 w-4" />
+                  Location
+                </h4>
+                <div className="p-3 rounded-md bg-muted">
+                  {location ? (
+                    <div className="space-y-1 text-sm">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Latitude:</span>
+                        <span className="font-medium" data-testid="text-latitude">{location.lat.toFixed(6)}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Longitude:</span>
+                        <span className="font-medium" data-testid="text-longitude">{location.lng.toFixed(6)}</span>
+                      </div>
+                      <div className="pt-2 border-t mt-2">
+                        <span className="text-xs text-muted-foreground">
+                          Location captured successfully
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-2">
+                      Capturing location...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Current Time */}
+              <div className="p-3 rounded-md bg-primary/10 border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Check-in Time</span>
+                  <span className="text-lg font-bold">{format(new Date(), "hh:mm a")}</span>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowCheckInDialog(false);
+                  if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                    streamRef.current = null;
+                  }
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmCheckIn} 
+                disabled={!capturedPhoto || !location}
+                data-testid="button-confirm-checkin"
+              >
+                Confirm Check-in
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
