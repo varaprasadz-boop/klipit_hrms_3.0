@@ -13,7 +13,8 @@ import {
   type PayrollRecord, type InsertPayrollRecord,
   type PayrollItem, type InsertPayrollItem,
   type ExpenseClaim, type InsertExpenseClaim,
-  type ExpenseClaimItem, type InsertExpenseClaimItem
+  type ExpenseClaimItem, type InsertExpenseClaimItem,
+  type Workflow, type InsertWorkflow
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 
@@ -134,6 +135,15 @@ export interface IStorage {
   createExpenseClaimItem(item: InsertExpenseClaimItem): Promise<ExpenseClaimItem>;
   updateExpenseClaimItem(id: string, updates: Partial<ExpenseClaimItem>): Promise<ExpenseClaimItem | undefined>;
   deleteExpenseClaimItem(id: string): Promise<boolean>;
+
+  // Workflows
+  getWorkflow(id: string): Promise<Workflow | undefined>;
+  getWorkflowsByCompany(companyId: string): Promise<Workflow[]>;
+  getWorkflowsByEmployee(employeeId: string): Promise<Workflow[]>;
+  getWorkflowsByAssigner(assignerId: string): Promise<Workflow[]>;
+  createWorkflow(workflow: InsertWorkflow): Promise<Workflow>;
+  updateWorkflow(id: string, updates: Partial<Workflow>): Promise<Workflow | undefined>;
+  deleteWorkflow(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -153,6 +163,7 @@ export class MemStorage implements IStorage {
   private payrollItems: Map<string, PayrollItem>;
   private expenseClaims: Map<string, ExpenseClaim>;
   private expenseClaimItems: Map<string, ExpenseClaimItem>;
+  private workflows: Map<string, Workflow>;
 
   constructor() {
     this.users = new Map();
@@ -171,6 +182,7 @@ export class MemStorage implements IStorage {
     this.expenseTypes = new Map();
     this.expenseClaims = new Map();
     this.expenseClaimItems = new Map();
+    this.workflows = new Map();
     this.seedSuperAdmin();
     this.seedDemoData();
   }
@@ -1403,6 +1415,57 @@ export class MemStorage implements IStorage {
 
   async deleteExpenseClaimItem(id: string): Promise<boolean> {
     return this.expenseClaimItems.delete(id);
+  }
+
+  // Workflow methods
+  async getWorkflow(id: string): Promise<Workflow | undefined> {
+    return this.workflows.get(id);
+  }
+
+  async getWorkflowsByCompany(companyId: string): Promise<Workflow[]> {
+    return Array.from(this.workflows.values()).filter((w) => w.companyId === companyId);
+  }
+
+  async getWorkflowsByEmployee(employeeId: string): Promise<Workflow[]> {
+    return Array.from(this.workflows.values()).filter((w) => w.assignedTo === employeeId);
+  }
+
+  async getWorkflowsByAssigner(assignerId: string): Promise<Workflow[]> {
+    return Array.from(this.workflows.values()).filter((w) => w.assignedBy === assignerId);
+  }
+
+  async createWorkflow(insertWorkflow: InsertWorkflow): Promise<Workflow> {
+    const id = randomUUID();
+    const workflow: Workflow = {
+      ...insertWorkflow,
+      id,
+      priority: insertWorkflow.priority || "medium",
+      status: insertWorkflow.status || "pending",
+      progress: insertWorkflow.progress || 0,
+      notes: insertWorkflow.notes || null,
+      completedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.workflows.set(id, workflow);
+    return workflow;
+  }
+
+  async updateWorkflow(id: string, updates: Partial<Workflow>): Promise<Workflow | undefined> {
+    const workflow = this.workflows.get(id);
+    if (!workflow) return undefined;
+    const updated = { 
+      ...workflow, 
+      ...updates,
+      updatedAt: new Date(),
+      completedAt: updates.status === "completed" ? new Date() : workflow.completedAt,
+    };
+    this.workflows.set(id, updated);
+    return updated;
+  }
+
+  async deleteWorkflow(id: string): Promise<boolean> {
+    return this.workflows.delete(id);
   }
 }
 
