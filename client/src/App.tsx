@@ -49,6 +49,7 @@ import HolidaysPage from "@/pages/masters/holidays";
 import LeaveTypesPage from "@/pages/masters/leave-types";
 import ExpenseTypesPage from "@/pages/masters/expense-types";
 import PayrollPage from "@/pages/payroll";
+import EmployeeExpensesPage from "@/pages/employee/expenses";
 
 function Router() {
   return (
@@ -147,6 +148,11 @@ function Router() {
       <Route path="/dashboard/employee">
         <ProtectedRoute requireAuth>
           <EmployeeDashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/expenses">
+        <ProtectedRoute requireAuth>
+          <EmployeeExpensesPage />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin/attendance">
