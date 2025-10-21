@@ -54,6 +54,7 @@ import ReportsPage from "@/pages/reports";
 import WorkflowsPage from "@/pages/admin/workflows";
 import LeavePage from "@/pages/admin/leave";
 import EmployeeExpensesPage from "@/pages/employee/expenses";
+import EmployeeAttendancePage from "@/pages/employee/attendance";
 import TeamExpensesPage from "@/pages/manager/team-expenses";
 import ExpenseDashboardPage from "@/pages/admin/expense-dashboard";
 
@@ -159,6 +160,11 @@ function Router() {
       <Route path="/dashboard/employee/expenses">
         <ProtectedRoute requireAuth>
           <EmployeeExpensesPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/employee/attendance">
+        <ProtectedRoute requireAuth>
+          <EmployeeAttendancePage />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/manager/team-expenses">
