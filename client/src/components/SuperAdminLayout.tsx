@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import klipitLogo from "@assets/Klipit By Bova_1761061110237.png";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -27,8 +28,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <header className="flex items-center justify-between gap-4 p-4 border-b">
             <div className="flex items-center gap-4">
               <SidebarTrigger data-testid="button-sidebar-toggle" />
-              <div>
-                <h1 className="text-lg font-semibold">HRMSWorld Admin</h1>
+              <div className="flex items-center gap-3">
+                <img src={klipitLogo} alt="Klipit by Bova" className="h-6 w-auto" />
                 <p className="text-sm text-muted-foreground">Super Administrator</p>
               </div>
             </div>

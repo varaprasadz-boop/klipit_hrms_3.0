@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { Bell, BarChart3, LogOut, ChevronDown } from "lucide-react";
+import { Bell, LogOut, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import klipitLogo from "@assets/Klipit By Bova_1761061110237.png";
 
 interface MenuItem {
   title: string;
@@ -78,11 +79,10 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
         <Sidebar>
           <SidebarContent>
             <div className="p-4 border-b">
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-6 w-6 text-primary" />
-                <h1 className="text-lg font-bold">HRMSWorld</h1>
+              <div className="flex items-center justify-center">
+                <img src={klipitLogo} alt="Klipit by Bova" className="h-10 w-auto" />
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-2 text-center">
                 {userType === "admin" ? "Admin Dashboard" : "Employee Portal"}
               </p>
             </div>

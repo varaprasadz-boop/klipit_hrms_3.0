@@ -3,9 +3,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import CostCalculator from "@/components/CostCalculator";
 import { 
   Clock, Umbrella, Workflow, Receipt, Megaphone, 
-  FileText, Users, Shield, BarChart3, Smartphone 
+  FileText, Users, Shield, Smartphone 
 } from "lucide-react";
 import { Link } from "wouter";
+import klipitLogo from "@assets/Klipit By Bova_1761061110237.png";
 
 const features = [
   { icon: Clock, title: "Attendance", desc: "Track clock-in/out with geo-fencing" },
@@ -23,9 +24,8 @@ export default function Home() {
     <div className="min-h-screen">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-bold">HRMSWorld</h1>
+          <div className="flex items-center">
+            <img src={klipitLogo} alt="Klipit by Bova" className="h-8 w-auto" />
           </div>
           <div className="flex gap-2 flex-wrap">
             <Link href="/login/company">
@@ -43,7 +43,7 @@ export default function Home() {
           Modern HR Management System
         </h2>
         <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-          Streamline your HR operations with HRMSWorld - a simple, professional platform 
+          Streamline your HR operations with Klipit by Bova - a simple, professional platform 
           for attendance, leave, payroll, and employee lifecycle management
         </p>
         <div className="flex gap-4 justify-center">
@@ -86,7 +86,7 @@ export default function Home() {
             <Smartphone className="h-12 w-12 text-primary mx-auto mb-4" />
             <h3 className="text-2xl font-bold mb-4">Mobile Apps Available</h3>
             <p className="text-muted-foreground mb-6">
-              Access HRMSWorld on the go with our Android and iOS mobile applications
+              Access Klipit on the go with our Android and iOS mobile applications
             </p>
             <div className="flex gap-4 justify-center">
               <Button variant="outline" data-testid="button-app-android">
@@ -102,7 +102,7 @@ export default function Home() {
 
       <footer className="border-t py-8">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>&copy; 2024 HRMSWorld.com - All rights reserved</p>
+          <p>&copy; 2024 Klipit by Bova - All rights reserved</p>
           <div className="mt-4">
             <Link href="/login/superadmin">
               <Button variant="ghost" size="sm" className="text-muted-foreground" data-testid="link-superadmin">
