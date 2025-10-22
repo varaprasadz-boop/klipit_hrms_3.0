@@ -10,6 +10,12 @@ export const companies = pgTable("companies", {
   status: text("status").notNull().default("active"),
   plan: text("plan").notNull().default("basic"),
   maxEmployees: text("max_employees").default("50"),
+  logoUrl: text("logo_url"),
+  address: text("address"),
+  phone: text("phone"),
+  website: text("website"),
+  primaryColor: text("primary_color").default("#00C853"),
+  secondaryColor: text("secondary_color").default("#000000"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -18,7 +24,18 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
   createdAt: true,
 });
 
+export const updateCompanySettingsSchema = z.object({
+  name: z.string().optional(),
+  logoUrl: z.string().optional(),
+  address: z.string().optional(),
+  phone: z.string().optional(),
+  website: z.string().optional(),
+  primaryColor: z.string().optional(),
+  secondaryColor: z.string().optional(),
+});
+
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
+export type UpdateCompanySettings = z.infer<typeof updateCompanySettingsSchema>;
 export type Company = typeof companies.$inferSelect;
 
 export const users = pgTable("users", {

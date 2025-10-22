@@ -36,6 +36,7 @@ import CompanyInfoSettings from "@/pages/settings/company-info";
 import EmailSMTPSettings from "@/pages/settings/email-smtp";
 import ContactInfoSettings from "@/pages/settings/contact-info";
 import PackageDetailsSettings from "@/pages/settings/package-details";
+import AdminCompanySettingsPage from "@/pages/admin/settings/company";
 import LiveLocation from "@/pages/monitoring/live-location";
 import Timeline from "@/pages/monitoring/timeline";
 import CardView from "@/pages/monitoring/card-view";
@@ -238,6 +239,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard/admin/settings" component={SettingsPage} />
+      <Route path="/dashboard/admin/settings/company" component={AdminCompanySettingsPage} />
       <Route path="/dashboard/admin/settings/company-info" component={CompanyInfoSettings} />
       <Route path="/dashboard/admin/settings/email-smtp" component={EmailSMTPSettings} />
       <Route path="/dashboard/admin/settings/contact-info" component={ContactInfoSettings} />

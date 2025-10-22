@@ -3,7 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
-  insertCompanySchema, 
+  insertCompanySchema,
+  updateCompanySettingsSchema,
   insertDepartmentSchema,
   insertDesignationSchema,
   insertRoleLevelSchema,
@@ -144,6 +145,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(company);
     } catch (error) {
       console.error("Update company error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/companies/:id/settings", requireCompanyAdmin, enforceCompanyScope, async (req, res) => {
+    try {
+      const settingsData = updateCompanySettingsSchema.parse(req.body);
+      
+      const company = await storage.updateCompany(req.params.id, settingsData);
+
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Update company settings error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

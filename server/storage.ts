@@ -1,5 +1,5 @@
 import { 
-  type User, type InsertUser, type Company, type InsertCompany, UserRole,
+  type User, type InsertUser, type Company, type InsertCompany, type UpdateCompanySettings, UserRole,
   type Department, type InsertDepartment,
   type Designation, type InsertDesignation,
   type RoleLevel, type InsertRoleLevel,
@@ -213,6 +213,12 @@ export class MemStorage implements IStorage {
       status: "active",
       plan: "premium",
       maxEmployees: "100",
+      logoUrl: null,
+      address: null,
+      phone: null,
+      website: null,
+      primaryColor: "#00C853",
+      secondaryColor: "#000000",
       createdAt: new Date(),
     };
     this.companies.set(company1Id, company1);

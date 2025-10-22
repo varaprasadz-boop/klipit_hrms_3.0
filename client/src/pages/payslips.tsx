@@ -36,7 +36,7 @@ import {
   BarChart3, Settings, Target, Building2, Star, DollarSign
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { PayrollRecord, Employee, Department } from "@shared/schema";
+import type { PayrollRecord, Employee, Department, Company } from "@shared/schema";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard/admin", icon: LayoutDashboard },
@@ -119,6 +119,8 @@ type PayrollWithEmployee = PayrollRecord & {
 
 export default function PayslipsPage() {
   const { toast } = useToast();
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const companyId = user.companyId;
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
@@ -141,6 +143,11 @@ export default function PayslipsPage() {
 
   const { data: departments } = useQuery<Department[]>({
     queryKey: ["/api/departments"],
+  });
+
+  const { data: company } = useQuery<Company>({
+    queryKey: [`/api/companies/${companyId}`],
+    enabled: !!companyId,
   });
 
   // Filter only published payslips
@@ -541,45 +548,89 @@ export default function PayslipsPage() {
 
         {/* View Payslip Dialog */}
         <Dialog open={!!viewingPayslip} onOpenChange={(open) => !open && setViewingPayslip(null)}>
-          <DialogContent className="max-w-2xl" data-testid="dialog-view-payslip">
-            <DialogHeader>
-              <DialogTitle>Payslip Details</DialogTitle>
-              <DialogDescription>
-                {viewingPayslip?.employee?.name} - {viewingPayslip && getMonthName(viewingPayslip.month)} {viewingPayslip?.year}
-              </DialogDescription>
-            </DialogHeader>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-view-payslip">
             {viewingPayslip && (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Employee Code</label>
-                    <p className="text-sm">{viewingPayslip.employee?.employeeCode || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Department</label>
-                    <p className="text-sm">{viewingPayslip.employee?.department || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Working Days</label>
-                    <p className="text-sm">{viewingPayslip.workingDays} days</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Present Days</label>
-                    <p className="text-sm">{viewingPayslip.presentDays} days</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Paid Leave</label>
-                    <p className="text-sm">{viewingPayslip.paidLeaveDays} days</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Overtime Hours</label>
-                    <p className="text-sm">{viewingPayslip.overtimeHours} hours</p>
+                {/* Company Header */}
+                <div className="border-b pb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      {company?.logoUrl && (
+                        <img 
+                          src={company.logoUrl} 
+                          alt="Company Logo" 
+                          className="h-12 mb-2 object-contain"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <h3 className="text-lg font-bold">{company?.name || "Company Name"}</h3>
+                      {company?.address && (
+                        <p className="text-xs text-muted-foreground mt-1">{company.address}</p>
+                      )}
+                      <div className="flex gap-4 mt-1">
+                        {company?.phone && (
+                          <p className="text-xs text-muted-foreground">Phone: {company.phone}</p>
+                        )}
+                        {company?.website && (
+                          <p className="text-xs text-muted-foreground">Web: {company.website}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <h4 className="text-sm font-semibold">PAYSLIP</h4>
+                      <p className="text-xs text-muted-foreground">
+                        {getMonthName(viewingPayslip.month)} {viewingPayslip.year}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
+                {/* Employee Details */}
+                <div className="grid grid-cols-2 gap-4 border-b pb-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Employee Name</label>
+                    <p className="text-sm font-medium">{viewingPayslip.employee?.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Employee Code</label>
+                    <p className="text-sm">{viewingPayslip.employee?.employeeCode || "-"}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Department</label>
+                    <p className="text-sm">{viewingPayslip.employee?.department || "-"}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Position</label>
+                    <p className="text-sm">{viewingPayslip.employee?.position || "-"}</p>
+                  </div>
+                </div>
+
+                {/* Attendance Details */}
+                <div className="grid grid-cols-4 gap-4 border-b pb-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Working Days</label>
+                    <p className="text-sm font-medium">{viewingPayslip.workingDays}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Present Days</label>
+                    <p className="text-sm font-medium">{viewingPayslip.presentDays}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Paid Leave</label>
+                    <p className="text-sm font-medium">{viewingPayslip.paidLeaveDays}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Overtime (hrs)</label>
+                    <p className="text-sm font-medium">{viewingPayslip.overtimeHours}</p>
+                  </div>
+                </div>
+
+                {/* Salary Breakdown */}
+                <div>
                   <h4 className="font-semibold mb-3">Salary Breakdown</h4>
-                  <div className="space-y-2">
+                  <div className="space-y-2 bg-muted p-3 rounded-md">
                     <div className="flex justify-between">
                       <span className="text-sm">Gross Pay</span>
                       <span className="text-sm font-medium">{formatCurrency(viewingPayslip.grossPay)}</span>
@@ -588,14 +639,25 @@ export default function PayslipsPage() {
                       <span className="text-sm">Total Deductions</span>
                       <span className="text-sm font-medium">- {formatCurrency(viewingPayslip.totalDeductions)}</span>
                     </div>
-                    <div className="flex justify-between border-t pt-2">
+                    <div className="flex justify-between border-t border-border pt-2 mt-2">
                       <span className="font-semibold">Net Pay</span>
                       <span className="font-bold text-lg">{formatCurrency(viewingPayslip.netPay)}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-4">
+                {/* System Note */}
+                <div className="bg-muted/50 border border-border rounded-md p-3">
+                  <p className="text-xs text-muted-foreground text-center">
+                    This is a system-generated payslip by Klipit by Bova HRMS. No signature is required.
+                  </p>
+                  <p className="text-xs text-muted-foreground text-center mt-1">
+                    Generated on: {format(new Date(), "dd MMM yyyy, hh:mm a")}
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 pt-2">
                   <Button 
                     className="flex-1"
                     onClick={() => viewingPayslip && handleDownloadPDF(viewingPayslip)}
