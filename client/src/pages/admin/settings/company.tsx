@@ -73,7 +73,7 @@ const menuItems = [
 
 export default function CompanySettingsPage() {
   const { toast } = useToast();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = JSON.parse(localStorage.getItem("hrms_user") || "{}");
   const companyId = user.companyId;
 
   const [formData, setFormData] = useState({
@@ -107,19 +107,18 @@ export default function CompanySettingsPage() {
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return await apiRequest(`/api/companies/${companyId}/settings`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest("PATCH", `/api/companies/${companyId}/settings`, data);
+      return await response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}`] });
       toast({
         title: "Settings Updated",
-        description: "Company settings have been saved successfully.",
+        description: "Company branding updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Mutation error:", error);
       toast({
         variant: "destructive",
         title: "Error",
