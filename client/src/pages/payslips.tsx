@@ -35,6 +35,7 @@ import {
   Receipt, Megaphone, UserPlus, Shield, 
   BarChart3, Settings, Target, Building2, Star, DollarSign
 } from "lucide-react";
+import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import type { PayrollRecord, Employee, Department, Company } from "@shared/schema";
 
