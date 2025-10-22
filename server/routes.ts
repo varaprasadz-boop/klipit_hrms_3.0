@@ -42,7 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const user = await storage.getUserByEmail(email);
-      
+      console.log("User: ",user);
       // NOTE: In production, passwords should be hashed using bcrypt or similar
       if (!user || user.password !== password) {
         return res.status(401).json({ error: "Invalid credentials" });
