@@ -5,9 +5,9 @@
 -- ============================================
 -- 1. COMPANIES
 -- ============================================
-INSERT INTO companies (id, name, email, status, plan, max_employees, created_at)
+INSERT INTO companies (id, name, email, status, plan, max_employees, logo_url, address, phone, website, primary_color, secondary_color, created_at)
 VALUES 
-('comp-tech-solutions-001', 'Tech Solutions Inc', 'admin@techsolutions.com', 'active', 'premium', '100', NOW());
+('comp-tech-solutions-001', 'Tech Solutions Inc', 'admin@techsolutions.com', 'active', 'premium', '100', NULL, NULL, NULL, NULL, '#00C853', '#000000', NOW());
 
 -- ============================================
 -- 2. USERS
