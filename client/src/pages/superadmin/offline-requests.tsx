@@ -117,20 +117,12 @@ export default function OfflineRequestsPage() {
           : req
       ));
       
-      // Store the company email for the dashboard
-      localStorage.setItem("companyEmail", selectedRequest.user.email);
-      
       toast({
         title: "Request Approved",
-        description: `Offline payment request for ${selectedRequest.user.name} has been approved. Redirecting to company dashboard...`,
+        description: `Offline payment request for ${selectedRequest.user.name} has been approved and activated.`,
       });
       
       setSelectedRequest(null);
-      
-      // Redirect to company admin dashboard after a short delay
-      setTimeout(() => {
-        window.location.href = "/dashboard/admin";
-      }, 2000);
     }
   };
 

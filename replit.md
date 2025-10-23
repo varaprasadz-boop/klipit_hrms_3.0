@@ -11,7 +11,7 @@ Preferred communication style: Simple, everyday language.
 ## Demo Credentials
 
 ### Super Admin Login (`/login/superadmin`)
-- Email: `superadmin@klipit.com`
+- Email: `superadmin@hrmsworld.com`
 - Password: `123456`
 
 ### Company Admin Login (`/login/company`)
