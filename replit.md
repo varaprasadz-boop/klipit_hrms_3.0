@@ -58,9 +58,10 @@ Preferred communication style: Simple, everyday language.
 - **Security Note**: Password storage currently in plain-text; bcrypt or similar hashing is required for production.
 
 ### Data Storage
-- **Current**: In-memory storage (`MemStorage`) with seeded demo data.
-- **Intended**: PostgreSQL with Neon serverless driver.
-- **ORM**: Drizzle ORM configured for PostgreSQL.
+- **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage).
+- **ORM**: Drizzle ORM for type-safe database operations.
+- **Implementation**: `DbStorage` class in `server/db-storage.ts` implements all CRUD operations.
+- **Persistence**: All data persists across server restarts; demo data seeded via `server/seed.ts`.
 - **Schema**: 
   - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected)
   - `users`: Employee records with role, company, department, position
