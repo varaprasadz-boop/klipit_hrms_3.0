@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 - **Framework**: Express.js with TypeScript.
 - **API**: RESTful API design.
 - **Authentication**: Session-based and token-based (Bearer tokens). Middleware for authentication and authorization (`requireAuth`, `requireSuperAdmin`, `requireCompanyAdmin`, `enforceCompanyScope`).
-- **Security Note**: Password storage currently in plain-text; bcrypt or similar hashing is required for production.
+- **Security**: Production-ready password hashing using bcrypt (10 salt rounds). All passwords hashed before storage. No plaintext passwords in database or session storage.
 
 ### Data Storage
 - **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage).
@@ -45,23 +45,51 @@ Preferred communication style: Simple, everyday language.
 - **Seeding**: Creates super admin user and 3 default subscription plans via `server/seed.ts` (production-ready, no demo data).
 - **Schema**: 
   - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected), plan, maxEmployees
-  - `users`: Employee records with role, company, department, position
+  - `users`: Employee records with role, company, department, position, **password (bcrypt hashed)**
   - `plans`: Subscription plans with pricing, duration, employee limits, and features
+  - `registration_sessions`: Multi-step registration tracking (sessionId, status, sessionData with hashed password, expiresAt)
+  - `orders`: Online payment orders (companyId, planId, amount, status, paymentDetails JSON)
+  - `offline_payment_requests`: Offline payment requests (companyId, planId, amount, notes, status)
   - `CompanyStatus` enum: pending (default for new registrations), active (approved by super admin), suspended, rejected
+  - `OrderStatus` enum: pending, approved, rejected
+  - `OfflinePaymentStatus` enum: pending, approved, rejected
 
 ### Authentication Flow
 - **Login**: Separate portals for Company Admin, Employee, Super Admin.
-- **Process**: POST to `/api/auth/login`, server validates credentials, creates session token, client stores token and user data.
+- **Process**: POST to `/api/auth/login`, server validates credentials using bcrypt.compare(), creates session token, client stores token and user data.
 - **Route Protection**: `ProtectedRoute` component enforces authentication and role requirements, redirecting unauthorized users.
-- **Company Registration**: 
-  - POST to `/api/auth/register` with company name, admin details (firstName, lastName, email, password, phone, gender), and selected planId
-  - Users select from active subscription plans (Basic ₹5k, Standard ₹10k, Premium ₹20k per month)
-  - Atomically creates both company entity (with "pending" status) and admin user
-  - Selected plan determines company's maxEmployees limit and plan tier
-  - After registration, company admin can immediately login with email/password
-  - Pending companies are redirected to `/waiting-approval` page where they can view approval status and logout
-  - After super admin approves payment request, company status changes to "active"
-  - Active companies are redirected to full admin dashboard (`/dashboard/admin`) on login
+- **Password Security**: All passwords hashed using bcrypt (10 salt rounds) before storage. Server-side utility (`server/utils/password.ts`) handles hashing and verification.
+
+### Company Registration Flow
+Multi-step registration wizard with secure password handling and super admin approval:
+
+**Step 1: Company & Admin Details** (`POST /api/registration/start`)
+- Company name, admin details (firstName, lastName, email, password, phone, gender)
+- Password immediately hashed with bcrypt before storing in sessionData
+- Creates registration session with 24-hour expiration
+- Returns sessionId for tracking subsequent steps
+
+**Step 2: Plan Selection** (`POST /api/registration/:sessionId/select-plan`)
+- Users select from active subscription plans (Basic ₹5k, Standard ₹10k, Premium ₹20k per month)
+- Validates plan exists and is active
+- Updates session with selected planId
+
+**Step 3: Add Employees (Optional)** (`POST /api/registration/:sessionId/add-employees`)
+- Add additional employees (name, email, department, position)
+- Employee data sanitized server-side - password fields explicitly excluded for security
+- Employees created with server-generated hashed default password ("changeme123")
+
+**Step 4: Payment Method** (`POST /api/registration/:sessionId/pay-online` or `/pay-offline`)
+- **Online Payment**: Dummy card form (card number, expiry, CVV) for simulation
+- **Offline Payment**: Request with notes for manual approval
+- Atomically creates company (status: "pending"), admin user (with hashed password from Step 1), employees (with hashed defaults), and order/offline request
+- Returns success and redirects to `/waiting-approval`
+
+**Step 5: Approval & Activation**
+- Company admin can immediately login but is redirected to `/waiting-approval` while pending
+- Super admin reviews Orders (`/superadmin/orders`) or Offline Requests (`/superadmin/offline-requests`)
+- Upon approval: Company status changes from "pending" to "active"
+- Active company admins are redirected to full admin dashboard (`/dashboard/admin`) on login
 
 ### Key Features
 
