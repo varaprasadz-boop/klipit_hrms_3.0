@@ -5,6 +5,9 @@ import * as schema from "@shared/schema";
 import type {
   User, InsertUser, Company, InsertCompany, RegisterCompany, UserRole,
   Plan, InsertPlan,
+  RegistrationSession, InsertRegistrationSession,
+  Order, InsertOrder,
+  OfflinePaymentRequest, InsertOfflinePaymentRequest,
   Department, InsertDepartment,
   Designation, InsertDesignation,
   RoleLevel, InsertRoleLevel,
@@ -82,28 +85,19 @@ export class DbStorage implements IStorage {
     return company;
   }
 
+  // Registration is now multi-step, so this method is deprecated
+  // Kept for backwards compatibility but will be replaced by registration session flow
   async registerCompany(data: RegisterCompany): Promise<{ company: Company; user: User }> {
     const companyId = randomUUID();
     const userId = randomUUID();
-
-    // Fetch the selected plan to get plan details
-    const selectedPlan = await this.getPlan(data.planId);
-    if (!selectedPlan) {
-      throw new Error("Selected plan not found");
-    }
-
-    // Ensure the plan is active
-    if (!selectedPlan.isActive) {
-      throw new Error("Selected plan is not active");
-    }
 
     const [company] = await db.insert(schema.companies).values({
       id: companyId,
       name: data.companyName,
       email: data.email,
       status: "pending",
-      plan: selectedPlan.name,
-      maxEmployees: selectedPlan.maxEmployees.toString(),
+      plan: "basic", // Temporary default, will be set after plan selection
+      maxEmployees: "50", // Temporary default
       phone: data.phone,
       primaryColor: "#00C853",
       secondaryColor: "#000000",
@@ -150,6 +144,70 @@ export class DbStorage implements IStorage {
   async deletePlan(id: string): Promise<boolean> {
     const result = await db.delete(schema.plans).where(eq(schema.plans.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Registration Session methods
+  async getRegistrationSession(id: string): Promise<RegistrationSession | undefined> {
+    const [session] = await db.select().from(schema.registrationSessions).where(eq(schema.registrationSessions.id, id));
+    return session;
+  }
+
+  async createRegistrationSession(data: InsertRegistrationSession): Promise<RegistrationSession> {
+    const [session] = await db.insert(schema.registrationSessions).values(data).returning();
+    return session;
+  }
+
+  async updateRegistrationSession(id: string, updates: Partial<RegistrationSession>): Promise<RegistrationSession | undefined> {
+    const [session] = await db.update(schema.registrationSessions).set(updates).where(eq(schema.registrationSessions.id, id)).returning();
+    return session;
+  }
+
+  // Order methods
+  async getOrder(id: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(schema.orders).where(eq(schema.orders.id, id));
+    return order;
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db.select().from(schema.orders);
+  }
+
+  async getPendingOrders(): Promise<Order[]> {
+    return await db.select().from(schema.orders).where(eq(schema.orders.status, "pending"));
+  }
+
+  async createOrder(data: InsertOrder): Promise<Order> {
+    const [order] = await db.insert(schema.orders).values(data).returning();
+    return order;
+  }
+
+  async updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined> {
+    const [order] = await db.update(schema.orders).set(updates).where(eq(schema.orders.id, id)).returning();
+    return order;
+  }
+
+  // Offline Payment Request methods
+  async getOfflinePaymentRequest(id: string): Promise<OfflinePaymentRequest | undefined> {
+    const [request] = await db.select().from(schema.offlinePaymentRequests).where(eq(schema.offlinePaymentRequests.id, id));
+    return request;
+  }
+
+  async getAllOfflinePaymentRequests(): Promise<OfflinePaymentRequest[]> {
+    return await db.select().from(schema.offlinePaymentRequests);
+  }
+
+  async getPendingOfflinePaymentRequests(): Promise<OfflinePaymentRequest[]> {
+    return await db.select().from(schema.offlinePaymentRequests).where(eq(schema.offlinePaymentRequests.status, "pending"));
+  }
+
+  async createOfflinePaymentRequest(data: InsertOfflinePaymentRequest): Promise<OfflinePaymentRequest> {
+    const [request] = await db.insert(schema.offlinePaymentRequests).values(data).returning();
+    return request;
+  }
+
+  async updateOfflinePaymentRequest(id: string, updates: Partial<OfflinePaymentRequest>): Promise<OfflinePaymentRequest | undefined> {
+    const [request] = await db.update(schema.offlinePaymentRequests).set(updates).where(eq(schema.offlinePaymentRequests.id, id)).returning();
+    return request;
   }
 
   // Department methods
