@@ -74,10 +74,11 @@ Multi-step registration wizard with secure password handling and super admin app
 - Validates plan exists and is active
 - Updates session with selected planId
 
-**Step 3: Add Employees (Optional)** (`POST /api/registration/:sessionId/add-employees`)
-- Add additional employees (name, email, department, position)
-- Employee data sanitized server-side - password fields explicitly excluded for security
-- Employees created with server-generated hashed default password ("changeme123")
+**Step 3: Employee Count** (`POST /api/registration/:sessionId/add-employees`)
+- Simplified interface: Select number of employees (1-500)
+- Displays real-time pricing based on selected plan
+- Employee count stored in session; actual employees added later by admin post-approval
+- Clean UX with employee count selector and pricing summary
 
 **Step 4: Payment Method** (`POST /api/registration/:sessionId/pay-online` or `/pay-offline`)
 - **Online Payment**: Dummy card form (card number, expiry, CVV) for simulation
