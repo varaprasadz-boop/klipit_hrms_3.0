@@ -17,7 +17,7 @@ export default function CustomersPage() {
   const totalCustomers = companies.length;
   const verifiedCustomers = companies.filter(c => c.status === "active").length;
   const duplicateCustomers = 0;
-  const pendingVerification = companies.filter(c => c.status === "inactive").length;
+  const pendingVerification = companies.filter(c => c.status === "pending").length;
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -56,7 +56,7 @@ export default function CustomersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{verifiedCustomers}</div>
-            <p className="text-xs text-green-600 mt-1">+{Math.round((verifiedCustomers / totalCustomers) * 100)}%</p>
+            <p className="text-xs text-green-600 mt-1">+{totalCustomers > 0 ? Math.round((verifiedCustomers / totalCustomers) * 100) : 0}%</p>
             <p className="text-xs text-muted-foreground mt-1">Recent analytics</p>
           </CardContent>
         </Card>
@@ -80,7 +80,7 @@ export default function CustomersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{pendingVerification}</div>
-            <p className="text-xs text-orange-600 mt-1">+{Math.round((pendingVerification / totalCustomers) * 100)}%</p>
+            <p className="text-xs text-orange-600 mt-1">+{totalCustomers > 0 ? Math.round((pendingVerification / totalCustomers) * 100) : 0}%</p>
             <p className="text-xs text-muted-foreground mt-1">Recent analytics</p>
           </CardContent>
         </Card>
@@ -107,8 +107,9 @@ export default function CustomersPage() {
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="rejected">Rejected</SelectItem>
             </SelectContent>
           </Select>
 
