@@ -72,6 +72,7 @@ function Router() {
       <Route path="/login/employee" component={EmployeeLogin} />
       <Route path="/login/superadmin" component={SuperAdminLogin} />
       <Route path="/register/company" component={RegisterCompany} />
+      <Route path="/register-company" component={RegisterCompany} />
       <Route path="/waiting-approval" component={WaitingApproval} />
       <Route path="/offline-requests" component={OfflineRequests} />
       <Route path="/dashboard/admin" component={AdminDashboard} />

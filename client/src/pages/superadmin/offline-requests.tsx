@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,9 +9,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Eye, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface OfflineRequest {
   id: number;
+  companyId: number;
   user: {
     name: string;
     email: string;
@@ -26,81 +29,77 @@ interface OfflineRequest {
   additionalUsers: number;
   totalAmount: number;
   orderId: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "active" | "rejected";
+  paymentMethod: string;
 }
-
-const mockRequests: OfflineRequest[] = [
-  {
-    id: 4,
-    user: {
-      name: "nov test",
-      email: "novtest@mailinator.com",
-      initials: "NT",
-      avatarColor: "bg-cyan-400",
-    },
-    type: "Plan",
-    plan: {
-      name: "Basic",
-      duration: "1 months",
-      includedUsers: 1,
-    },
-    additionalUsers: 6,
-    totalAmount: 230,
-    orderId: null,
-    status: "pending",
-  },
-  {
-    id: 3,
-    user: {
-      name: "Oct Company Oct Company",
-      email: "octcompany@mailinator.com",
-      initials: "OC",
-      avatarColor: "bg-cyan-400",
-    },
-    type: "Plan",
-    plan: {
-      name: "Basic",
-      duration: "1 months",
-      includedUsers: 1,
-    },
-    additionalUsers: 8,
-    totalAmount: 290,
-    orderId: "4",
-    status: "approved",
-  },
-  {
-    id: 2,
-    user: {
-      name: "Elon Musk",
-      email: "elon@mailinator.com",
-      initials: "EM",
-      avatarColor: "bg-cyan-400",
-    },
-    type: "Plan",
-    plan: {
-      name: "Basic",
-      duration: "1 months",
-      includedUsers: 1,
-    },
-    additionalUsers: 1,
-    totalAmount: 80,
-    orderId: "3",
-    status: "approved",
-  },
-];
 
 export default function OfflineRequestsPage() {
   const [pageSize, setPageSize] = useState("7");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRequest, setSelectedRequest] = useState<OfflineRequest | null>(null);
-  const [requests, setRequests] = useState(mockRequests);
   const { toast } = useToast();
+
+  const { data: requests = [], isLoading } = useQuery<OfflineRequest[]>({
+    queryKey: ["/api/payment-requests"],
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("POST", `/api/payment-requests/${id}/approve`, {});
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to approve request");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-requests"] });
+      toast({
+        title: "Request Approved",
+        description: `Offline payment request has been approved and activated.`,
+      });
+      setSelectedRequest(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Approval Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const response = await apiRequest("POST", `/api/payment-requests/${id}/reject`, {});
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to reject request");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payment-requests"] });
+      toast({
+        title: "Request Rejected",
+        description: `Offline payment request has been rejected.`,
+      });
+      setSelectedRequest(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Rejection Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
         return "bg-yellow-400 text-yellow-900 hover:bg-yellow-400";
-      case "approved":
+      case "active":
         return "bg-green-400 text-green-900 hover:bg-green-400";
       case "rejected":
         return "bg-red-400 text-red-900 hover:bg-red-400";
@@ -111,34 +110,13 @@ export default function OfflineRequestsPage() {
 
   const handleApprove = () => {
     if (selectedRequest) {
-      setRequests(requests.map(req => 
-        req.id === selectedRequest.id 
-          ? { ...req, status: "approved" as const, orderId: String(Math.floor(Math.random() * 1000)) }
-          : req
-      ));
-      
-      toast({
-        title: "Request Approved",
-        description: `Offline payment request for ${selectedRequest.user.name} has been approved and activated.`,
-      });
-      
-      setSelectedRequest(null);
+      approveMutation.mutate(selectedRequest.companyId);
     }
   };
 
   const handleReject = () => {
     if (selectedRequest) {
-      setRequests(requests.map(req => 
-        req.id === selectedRequest.id 
-          ? { ...req, status: "rejected" as const }
-          : req
-      ));
-      toast({
-        title: "Request Rejected",
-        description: `Offline payment request for ${selectedRequest.user.name} has been rejected.`,
-        variant: "destructive",
-      });
-      setSelectedRequest(null);
+      rejectMutation.mutate(selectedRequest.companyId);
     }
   };
 
@@ -180,75 +158,79 @@ export default function OfflineRequestsPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ID</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">USER</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">TYPE</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">PLAN</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ADDITIONAL USERS</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">TOTAL AMOUNT</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ORDER ID</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">STATUS</th>
-                  <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ACTIONS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map((request) => (
-                  <tr key={request.id} className="border-b hover-elevate">
-                    <td className="py-4 px-2">{request.id}</td>
-                    <td className="py-4 px-2">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className={`${request.user.avatarColor} text-white font-semibold`}>
-                            {request.user.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">{request.user.name}</div>
-                          <div className="text-sm text-muted-foreground">{request.user.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2">{request.type}</td>
-                    <td className="py-4 px-2">
-                      <div className="space-y-1">
-                        <div className="text-muted-foreground">{request.plan.name}</div>
-                        <div className="text-sm">
-                          <span className="font-semibold">Duration:</span>
-                          <br />
-                          {request.plan.duration}
-                        </div>
-                        <div className="text-sm">
-                          <span className="font-semibold">Included Users:</span>
-                          <br />
-                          {request.plan.includedUsers}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2 text-center">{request.additionalUsers}</td>
-                    <td className="py-4 px-2">{request.totalAmount}</td>
-                    <td className="py-4 px-2">{request.orderId || "N/A"}</td>
-                    <td className="py-4 px-2">
-                      <Badge className={`${getStatusColor(request.status)} capitalize`}>
-                        {request.status}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setSelectedRequest(request)}
-                        data-testid={`button-view-${request.id}`}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </td>
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading requests...</div>
+            ) : (
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ID</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">USER</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">TYPE</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">PLAN</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ADDITIONAL USERS</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">TOTAL AMOUNT</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ORDER ID</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">STATUS</th>
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground">ACTIONS</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {requests.map((request) => (
+                    <tr key={request.id} className="border-b hover-elevate">
+                      <td className="py-4 px-2">{request.id}</td>
+                      <td className="py-4 px-2">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className={`${request.user.avatarColor} text-white font-semibold`}>
+                              {request.user.initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium">{request.user.name}</div>
+                            <div className="text-sm text-muted-foreground">{request.user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-2">{request.type}</td>
+                      <td className="py-4 px-2">
+                        <div className="space-y-1">
+                          <div className="text-muted-foreground">{request.plan.name}</div>
+                          <div className="text-sm">
+                            <span className="font-semibold">Duration:</span>
+                            <br />
+                            {request.plan.duration}
+                          </div>
+                          <div className="text-sm">
+                            <span className="font-semibold">Included Users:</span>
+                            <br />
+                            {request.plan.includedUsers}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-2 text-center">{request.additionalUsers}</td>
+                      <td className="py-4 px-2">{request.totalAmount}</td>
+                      <td className="py-4 px-2">{request.orderId || "N/A"}</td>
+                      <td className="py-4 px-2">
+                        <Badge className={`${getStatusColor(request.status)} capitalize`}>
+                          {request.status === "active" ? "Approved" : request.status}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedRequest(request)}
+                          data-testid={`button-view-${request.id}`}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </CardContent>
       </Card>

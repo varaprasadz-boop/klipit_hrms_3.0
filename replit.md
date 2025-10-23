@@ -61,12 +61,22 @@ Preferred communication style: Simple, everyday language.
 - **Current**: In-memory storage (`MemStorage`) with seeded demo data.
 - **Intended**: PostgreSQL with Neon serverless driver.
 - **ORM**: Drizzle ORM configured for PostgreSQL.
-- **Schema**: `companies` (multi-tenant records) and `users` (employee records with role, company, department, position).
+- **Schema**: 
+  - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected)
+  - `users`: Employee records with role, company, department, position
+  - `CompanyStatus` enum: pending (default for new registrations), active (approved by super admin), suspended, rejected
 
 ### Authentication Flow
 - **Login**: Separate portals for Company Admin, Employee, Super Admin.
 - **Process**: POST to `/api/auth/login`, server validates credentials, creates session token, client stores token and user data.
 - **Route Protection**: `ProtectedRoute` component enforces authentication and role requirements, redirecting unauthorized users.
+- **Company Registration**: 
+  - POST to `/api/auth/register` with company name, admin details (firstName, lastName, email, password, phone, gender), and payment method
+  - Atomically creates both company entity (with "pending" status) and admin user
+  - After registration, company admin can immediately login with email/password
+  - Pending companies are redirected to `/waiting-approval` page where they can view approval status and logout
+  - After super admin approves payment request, company status changes to "active"
+  - Active companies are redirected to full admin dashboard (`/dashboard/admin`) on login
 
 ### Key Features
 

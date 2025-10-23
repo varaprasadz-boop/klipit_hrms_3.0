@@ -202,6 +202,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/payment-requests", requireSuperAdmin, async (req, res) => {
+    try {
+      const companies = await storage.getAllCompanies();
+      const users = await storage.getAllUsers();
+      
+      // Map companies to payment request format
+      const requests = companies.map(company => {
+        const admin = users.find(u => u.companyId === company.id && u.role === "COMPANY_ADMIN");
+        
+        // Extract initials from name
+        let initials = company.name.substring(0, 2).toUpperCase();
+        if (admin?.name) {
+          const nameParts = admin.name.trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            initials = `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
+          } else if (nameParts.length === 1 && nameParts[0].length >= 2) {
+            initials = nameParts[0].substring(0, 2).toUpperCase();
+          }
+        }
+        
+        return {
+          id: company.id,
+          companyId: company.id,
+          user: {
+            name: admin?.name || company.name,
+            email: admin?.email || company.email,
+            initials: initials,
+            avatarColor: "bg-cyan-400",
+          },
+          type: "Plan",
+          plan: {
+            name: company.plan || "Basic",
+            duration: "1 months",
+            includedUsers: 1,
+          },
+          additionalUsers: company.maxEmployees || 1,
+          totalAmount: 0,
+          orderId: company.status === "active" ? String(company.id) : null,
+          status: company.status,
+          paymentMethod: "offline",
+        };
+      });
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Get payment requests error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payment-requests/:id/approve", requireSuperAdmin, async (req, res) => {
+    try {
+      const companyId = req.params.id;
+      
+      const company = await storage.updateCompany(companyId, { status: "active" });
+
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      res.json({ success: true, company });
+    } catch (error) {
+      console.error("Approve payment request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/payment-requests/:id/reject", requireSuperAdmin, async (req, res) => {
+    try {
+      const companyId = req.params.id;
+      
+      const company = await storage.updateCompany(companyId, { status: "rejected" });
+
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      res.json({ success: true, company });
+    } catch (error) {
+      console.error("Reject payment request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.patch("/api/companies/:id/settings", requireCompanyAdmin, enforceCompanyScope, async (req, res) => {
     try {
       const settingsData = updateCompanySettingsSchema.parse(req.body);
