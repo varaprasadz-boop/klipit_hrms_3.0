@@ -85,12 +85,23 @@ export default function RegisterCompany() {
 
     try {
       const { confirmPassword, ...registrationData } = step1Data;
-      const response = await apiRequest("POST", "/api/registration/start", registrationData);
+      
+      // Use raw fetch instead of apiRequest so we can handle error responses properly
+      const response = await fetch("/api/registration/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(registrationData),
+        credentials: "include",
+      });
+
       const data = await response.json();
 
       if (!response.ok) {
         // Check if there's a duplicate field error
         if (data.duplicateField) {
+          console.log("[Registration] Duplicate field detected:", data.duplicateField);
           setDuplicateFields([data.duplicateField]);
           toast({
             title: "Duplicate data detected",
@@ -98,6 +109,7 @@ export default function RegisterCompany() {
             variant: "destructive",
           });
         } else {
+          console.log("[Registration] Error:", data.error);
           setDuplicateFields([]);
           toast({
             title: "Registration failed",
@@ -105,6 +117,7 @@ export default function RegisterCompany() {
             variant: "destructive",
           });
         }
+        setLoading(false);
         return;
       }
 
@@ -116,6 +129,7 @@ export default function RegisterCompany() {
         description: "Please select a subscription plan",
       });
     } catch (error: any) {
+      console.log("[Registration] Exception:", error);
       setDuplicateFields([]);
       toast({
         title: "Registration failed",
@@ -406,9 +420,13 @@ export default function RegisterCompany() {
                       required
                       className={duplicateFields.includes("phone") ? "border-destructive focus-visible:ring-destructive" : ""}
                       data-testid="input-phone"
+                      aria-invalid={duplicateFields.includes("phone")}
+                      aria-describedby={duplicateFields.includes("phone") ? "phone-error" : undefined}
                     />
                     {duplicateFields.includes("phone") && (
-                      <p className="text-sm text-destructive">This phone number is already registered</p>
+                      <p id="phone-error" className="text-sm text-destructive" data-testid="error-phone">
+                        This phone number is already registered
+                      </p>
                     )}
                   </div>
 
@@ -446,9 +464,13 @@ export default function RegisterCompany() {
                     required
                     className={duplicateFields.includes("email") ? "border-destructive focus-visible:ring-destructive" : ""}
                     data-testid="input-email"
+                    aria-invalid={duplicateFields.includes("email")}
+                    aria-describedby={duplicateFields.includes("email") ? "email-error" : undefined}
                   />
                   {duplicateFields.includes("email") && (
-                    <p className="text-sm text-destructive">This email is already registered</p>
+                    <p id="email-error" className="text-sm text-destructive" data-testid="error-email">
+                      This email is already registered
+                    </p>
                   )}
                 </div>
 
