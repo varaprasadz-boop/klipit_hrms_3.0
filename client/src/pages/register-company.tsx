@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
 import type { Plan } from "@shared/schema";
 
-const STEPS = ["Company Info", "Select Plan", "Add Employees", "Payment", "Complete"];
+const STEPS = ["Company Info", "Select Plan", "Employee Count", "Payment", "Complete"];
 
 type StepNumber = 1 | 2 | 3 | 4 | 5;
 
@@ -30,6 +30,7 @@ export default function RegisterCompany() {
   const [sessionId, setSessionId] = useState<string>("");
   const [selectedPlanId, setSelectedPlanId] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<"online" | "offline" | null>(null);
+  const [employeeCount, setEmployeeCount] = useState<number>(1);
   
   const [step1Data, setStep1Data] = useState({
     companyName: "",
@@ -42,12 +43,6 @@ export default function RegisterCompany() {
     confirmPassword: "",
   });
 
-  const [employees, setEmployees] = useState<Array<{
-    name: string;
-    email: string;
-    department: string;
-    position: string;
-  }>>([]);
 
   const [cardData, setCardData] = useState({
     cardNumber: "",
@@ -151,34 +146,6 @@ export default function RegisterCompany() {
     }
   };
 
-  const handleStep3Submit = async () => {
-    setLoading(true);
-
-    try {
-      const response = await apiRequest("POST", `/api/registration/${sessionId}/add-employees`, {
-        employees,
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to add employees");
-      }
-
-      setCurrentStep(4);
-      toast({
-        title: "Employees saved",
-        description: "Please choose a payment method",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Failed to save employees",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSkipEmployees = async () => {
     setLoading(true);
@@ -186,6 +153,7 @@ export default function RegisterCompany() {
     try {
       const response = await apiRequest("POST", `/api/registration/${sessionId}/add-employees`, {
         employees: [],
+        employeeCount,
       });
       const data = await response.json();
 
@@ -194,6 +162,10 @@ export default function RegisterCompany() {
       }
 
       setCurrentStep(4);
+      toast({
+        title: "Employee count saved",
+        description: "Please choose a payment method",
+      });
     } catch (error: any) {
       toast({
         title: "Failed to proceed",
@@ -280,19 +252,6 @@ export default function RegisterCompany() {
     }
   };
 
-  const addEmployee = () => {
-    setEmployees([...employees, { name: "", email: "", department: "", position: "" }]);
-  };
-
-  const removeEmployee = (index: number) => {
-    setEmployees(employees.filter((_, i) => i !== index));
-  };
-
-  const updateEmployee = (index: number, field: string, value: string) => {
-    const updated = [...employees];
-    updated[index] = { ...updated[index], [field]: value };
-    setEmployees(updated);
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -612,78 +571,64 @@ export default function RegisterCompany() {
               </div>
             )}
 
-            {/* Step 3: Add Employees */}
+            {/* Step 3: Employee Count */}
             {currentStep === 3 && (
               <div className="space-y-6">
-                <div className="space-y-4">
-                  {employees.map((emp, index) => (
-                    <Card key={index} data-testid={`employee-card-${index}`}>
-                      <CardContent className="pt-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Name</Label>
-                            <Input
-                              placeholder="Full name"
-                              value={emp.name}
-                              onChange={(e) => updateEmployee(index, "name", e.target.value)}
-                              data-testid={`input-employee-name-${index}`}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Email</Label>
-                            <Input
-                              type="email"
-                              placeholder="email@example.com"
-                              value={emp.email}
-                              onChange={(e) => updateEmployee(index, "email", e.target.value)}
-                              data-testid={`input-employee-email-${index}`}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Department</Label>
-                            <Input
-                              placeholder="e.g., Engineering"
-                              value={emp.department}
-                              onChange={(e) => updateEmployee(index, "department", e.target.value)}
-                              data-testid={`input-employee-department-${index}`}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Position</Label>
-                            <Input
-                              placeholder="e.g., Software Engineer"
-                              value={emp.position}
-                              onChange={(e) => updateEmployee(index, "position", e.target.value)}
-                              data-testid={`input-employee-position-${index}`}
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removeEmployee(index)}
-                            data-testid={`button-remove-employee-${index}`}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>How many employees do you plan to have?</CardTitle>
+                    <CardDescription>
+                      Enter the number of employees who will use the system. You can add employee details after registration.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="employee-count">Number of Employees</Label>
+                      <Input
+                        id="employee-count"
+                        type="number"
+                        min="1"
+                        max={selectedPlan?.maxEmployees || 1}
+                        value={employeeCount}
+                        onChange={(e) => setEmployeeCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        data-testid="input-employee-count"
+                      />
+                      {selectedPlan && (
+                        <p className="text-sm text-muted-foreground">
+                          Your selected plan ({selectedPlan.displayName}) supports up to {selectedPlan.maxEmployees} employees.
+                        </p>
+                      )}
+                      {employeeCount > (selectedPlan?.maxEmployees || 0) && (
+                        <p className="text-sm text-destructive">
+                          Employee count exceeds plan limit. Please select a different plan or reduce the count.
+                        </p>
+                      )}
+                    </div>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={addEmployee}
-                  className="w-full"
-                  data-testid="button-add-employee"
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Add Employee
-                </Button>
+                    {selectedPlan && (
+                      <div className="bg-muted p-4 rounded-lg space-y-3">
+                        <h4 className="font-semibold">Pricing Summary</h4>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Selected Plan:</span>
+                          <span className="font-medium">{selectedPlan.displayName}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Employee Count:</span>
+                          <span className="font-medium">{employeeCount}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t">
+                          <span className="font-semibold">Total Monthly Cost:</span>
+                          <span className="text-2xl font-bold text-primary">
+                            ₹{selectedPlan.price.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Fixed monthly price for up to {selectedPlan.maxEmployees} employees
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
                 <div className="flex justify-between pt-4">
                   <Button
@@ -696,25 +641,14 @@ export default function RegisterCompany() {
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
                   </Button>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleSkipEmployees}
-                      disabled={loading}
-                      data-testid="button-skip-employees"
-                    >
-                      Skip
-                    </Button>
-                    <Button
-                      onClick={handleStep3Submit}
-                      disabled={loading}
-                      data-testid="button-next-step-3"
-                    >
-                      {loading ? "Processing..." : "Next"}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handleSkipEmployees}
+                    disabled={loading || employeeCount > (selectedPlan?.maxEmployees || 0)}
+                    data-testid="button-next-step-3"
+                  >
+                    {loading ? "Processing..." : "Proceed to Payment"}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             )}

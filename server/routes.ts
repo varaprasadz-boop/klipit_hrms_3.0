@@ -498,10 +498,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Step 3: Add additional employees (optional)
+  // Step 3: Add employee count (optional)
   app.post("/api/registration/:sessionId/add-employees", async (req, res) => {
     try {
-      const { employees } = req.body; // Array of employee objects
+      const { employees, employeeCount } = req.body;
       const session = await storage.getRegistrationSession(req.params.sessionId);
       
       if (!session) {
@@ -524,7 +524,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedSession = await storage.updateRegistrationSession(session.id, {
         status: "employees_setup",
-        sessionData: { ...session.sessionData, additionalEmployees: sanitizedEmployees },
+        sessionData: { 
+          ...session.sessionData, 
+          additionalEmployees: sanitizedEmployees,
+          employeeCount: employeeCount || sanitizedEmployees.length || 1,
+        },
       });
 
       res.json({ success: true, session: updatedSession });
