@@ -8,33 +8,13 @@ Klipit by Bova is a multi-tenant HR management system offering comprehensive fun
 
 Preferred communication style: Simple, everyday language.
 
-## Demo Credentials
+## System Credentials
 
 ### Super Admin Login (`/login/superadmin`)
 - Email: `superadmin@hrmsworld.com`
 - Password: `123456`
 
-### Company Admin Login (`/login/company`)
-- Email: `admin@techsolutions.com`
-- Password: `123456`
-- Company: Tech Solutions Inc
-
-### Employee Logins (`/login/employee`)
-1. **Sarah Johnson** (Engineering - Senior Engineer)
-   - Email: `sarah.johnson@techsolutions.com`
-   - Password: `123456`
-
-2. **Michael Chen** (Engineering - Engineer)
-   - Email: `michael.chen@techsolutions.com`
-   - Password: `123456`
-
-3. **Emily Rodriguez** (Sales - Sales Manager)
-   - Email: `emily.rodriguez@techsolutions.com`
-   - Password: `123456`
-
-4. **David Kumar** (HR - HR Coordinator)
-   - Email: `david.kumar@techsolutions.com`
-   - Password: `123456`
+**Note:** This is a production-ready system. No demo company or employee data is pre-seeded. All companies and users are created through the registration flow.
 
 ## System Architecture
 
@@ -61,7 +41,8 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Neon serverless driver (migrated from in-memory storage).
 - **ORM**: Drizzle ORM for type-safe database operations.
 - **Implementation**: `DbStorage` class in `server/db-storage.ts` implements all CRUD operations.
-- **Persistence**: All data persists across server restarts; demo data seeded via `server/seed.ts`.
+- **Persistence**: All data persists across server restarts.
+- **Seeding**: Only creates super admin user via `server/seed.ts` (production-ready, no demo data).
 - **Schema**: 
   - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected)
   - `users`: Employee records with role, company, department, position
