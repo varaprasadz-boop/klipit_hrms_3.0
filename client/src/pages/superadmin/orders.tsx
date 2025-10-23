@@ -1,22 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LayoutDashboard, Building2, Users, Activity, CreditCard, FileText, CheckCircle2, Clock } from "lucide-react";
+import { CreditCard, CheckCircle2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
-
-const menuItems = [
-  { title: "Dashboard", url: "/superadmin", icon: LayoutDashboard },
-  { title: "Companies", url: "/superadmin/companies", icon: Building2 },
-  { title: "Orders", url: "/superadmin/orders", icon: CreditCard },
-  { title: "Offline Requests", url: "/superadmin/offline-requests", icon: FileText },
-  { title: "All Users", url: "/superadmin/users", icon: Users },
-  { title: "System Activity", url: "/superadmin/activity", icon: Activity },
-];
 
 interface Order {
   id: string;
@@ -126,8 +116,7 @@ export default function SuperAdminOrders() {
   const completedOrders = orders.filter(o => o.status === "completed");
 
   return (
-    <DashboardLayout menuItems={menuItems} userType="admin">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h2 className="text-3xl font-bold mb-1">Online Payment Orders</h2>
           <p className="text-muted-foreground">Manage company registration payments</p>
@@ -304,7 +293,6 @@ export default function SuperAdminOrders() {
             )}
           </div>
         )}
-      </div>
-    </DashboardLayout>
+    </div>
   );
 }

@@ -1,46 +1,71 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, X, Minus, Plus, LogOut } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { LogOut, Clock, CheckCircle, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 
-const planFeatures = [
-  { name: "Included Users", value: "Upto 1 User", included: true },
-  { name: "Additional Users", value: "₹30/- User", included: true },
-  { name: "Brand Creation", limit: "05", included: true },
-  { name: "Product Creation Allowed", included: true },
-  { name: "Subscriptions Export", included: false },
-  { name: "Dynamic Forms", included: false },
-  { name: "Blog/News/Announcement", included: true },
-  { name: "Localization/Language", included: false },
-  { name: "AdvanceBooking/Reservation", included: false },
-  { name: "Offline/Tracking", included: true },
-  { name: "Payment/Collection", included: true },
-  { name: "SEO/Metadata", included: true },
-  { name: "SMS/Attendance", included: false },
-  { name: "Back/Store/Storage", included: false },
-  { name: "Whatsapp", included: true },
-  { name: "SignupInEmail", included: true },
-  { name: "Loyalty/Reward/Vouched", included: false },
-  { name: "ExpenseManagement", included: true },
-  { name: "Cleanings", included: true },
-  { name: "Report", included: true },
-  { name: "Faculdades/attendance", included: false },
-  { name: "Appendix", included: true },
-  { name: "Reviews", included: false },
-  { name: "AffiliateLink", included: false },
-];
+interface Company {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  planId: string;
+  maxEmployees: number;
+}
+
+interface Plan {
+  id: string;
+  name: string;
+  displayName: string;
+  price: number;
+  duration: number;
+  maxEmployees: number;
+  features: string[];
+}
 
 export default function WaitingApproval() {
   const [, setLocation] = useLocation();
-  const { logout } = useAuth();
-  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
-  const [additionalUsers, setAdditionalUsers] = useState(6);
-  const [showOfflinePending, setShowOfflinePending] = useState(false);
+  const { user, logout } = useAuth();
   const { toast } = useToast();
+
+  const { data: company, isLoading: companyLoading, error: companyError } = useQuery<Company>({
+    queryKey: ["/api/companies", user?.companyId],
+    queryFn: async () => {
+      const response = await fetch(`/api/companies/${user?.companyId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch company');
+      return response.json();
+    },
+    enabled: !!user?.companyId,
+  });
+
+  const { data: plan, isLoading: planLoading } = useQuery<Plan>({
+    queryKey: ["/api/plans", company?.planId],
+    queryFn: async () => {
+      const response = await fetch(`/api/plans/${company?.planId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch plan');
+      return response.json();
+    },
+    enabled: !!company?.planId,
+  });
+
+  // Redirect active companies to dashboard (in useEffect to avoid render loop)
+  useEffect(() => {
+    if (!companyLoading && company?.status === "active") {
+      setLocation("/dashboard/admin");
+    }
+  }, [company?.status, companyLoading, setLocation]);
 
   const handleLogout = () => {
     logout();
@@ -51,35 +76,83 @@ export default function WaitingApproval() {
     setLocation("/login/company");
   };
 
-  const basePrice = 50;
-  const pricePerUser = 30;
-  const includedUsers = 1;
-  const totalPrice = basePrice + (additionalUsers * pricePerUser);
+  const getStatusBadge = () => {
+    if (!company) return null;
 
-  const handlePayOnline = () => {
-    toast({
-      title: "Payment Successful",
-      description: "Your payment has been processed successfully!",
-    });
-    setShowPaymentDialog(false);
-    // TODO: Redirect to order history page
+    switch (company.status) {
+      case "pending":
+        return (
+          <Badge variant="secondary" className="gap-1" data-testid="badge-status-pending">
+            <Clock className="h-3 w-3" />
+            Pending Approval
+          </Badge>
+        );
+      case "active":
+        return (
+          <Badge variant="default" className="gap-1" data-testid="badge-status-active">
+            <CheckCircle className="h-3 w-3" />
+            Active
+          </Badge>
+        );
+      case "rejected":
+        return (
+          <Badge variant="destructive" className="gap-1" data-testid="badge-status-rejected">
+            <XCircle className="h-3 w-3" />
+            Rejected
+          </Badge>
+        );
+      case "suspended":
+        return (
+          <Badge variant="outline" className="gap-1" data-testid="badge-status-suspended">
+            <Clock className="h-3 w-3" />
+            Suspended
+          </Badge>
+        );
+      default:
+        return null;
+    }
   };
 
-  const handlePayOffline = () => {
-    setShowOfflinePending(true);
-    setShowPaymentDialog(false);
-    toast({
-      title: "Offline Payment Request Submitted",
-      description: "Your request has been submitted and is pending approval.",
-    });
-  };
+  // Show loading state
+  if (companyLoading) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center">
+        <Card className="p-6">
+          <div className="text-center space-y-4">
+            <Clock className="h-12 w-12 text-muted-foreground mx-auto animate-pulse" />
+            <p className="text-muted-foreground">Loading your company information...</p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (companyError || !company) {
+    return (
+      <div className="min-h-screen bg-muted/20 flex items-center justify-center p-4">
+        <Card className="max-w-md p-6 text-center">
+          <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Unable to Load Company Data</h2>
+          <p className="text-muted-foreground mb-4">
+            We encountered an error loading your company information.
+          </p>
+          <Button onClick={handleLogout} data-testid="button-logout">
+            Return to Login
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-muted/20 p-4">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-6">
           <div className="flex gap-4 mb-6 text-sm border-b items-center">
-            <a href="/waiting-approval" className="text-primary font-medium border-b-2 border-primary pb-2" data-testid="link-dashboard">Dashboard</a>
+            <a href="/waiting-approval" className="text-primary font-medium border-b-2 border-primary pb-2" data-testid="link-dashboard">
+              Dashboard
+            </a>
             <Button 
               variant="ghost" 
               size="sm" 
@@ -92,171 +165,115 @@ export default function WaitingApproval() {
             </Button>
           </div>
           
-          <h1 className="text-2xl font-bold mb-2">Welcome to the Klipit HRMS WORLD 👍</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold">Welcome to Klipit HRMS</h1>
+            {getStatusBadge()}
+          </div>
         </div>
 
-        {showOfflinePending && (
-          <Card className="mb-6 bg-cyan-50 border-cyan-200">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold text-cyan-900">Offline Request Pending!</h2>
-                <p className="text-cyan-800">
-                  Your offline request is pending approval. You will be notified once it is approved.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card className="mb-6 bg-yellow-50 border-yellow-200">
+        {/* Status Card */}
+        <Card className={`mb-6 ${company?.status === "pending" ? "bg-yellow-50 border-yellow-200" : ""}`}>
           <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <h2 className="text-xl font-semibold">You Don't have an Active Plan</h2>
-              <p className="text-muted-foreground">
-                Check out the available plans below and subscribe to get started
+            <div className="text-center space-y-3">
+              <div className="flex justify-center">
+                <Clock className="h-12 w-12 text-yellow-600" />
+              </div>
+              <h2 className="text-2xl font-semibold">
+                {company?.status === "pending" && "Registration Complete - Awaiting Approval"}
+                {company?.status === "rejected" && "Application Not Approved"}
+                {company?.status === "suspended" && "Account Suspended"}
+              </h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                {company?.status === "pending" && "Thank you for registering! Our team is reviewing your application and payment. You will receive an email notification once your account is activated."}
+                {company?.status === "rejected" && "Unfortunately, your application was not approved. Please contact our support team for more information."}
+                {company?.status === "suspended" && "Your account has been temporarily suspended. Please contact support for assistance."}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Available Plans</h2>
-          
-          <div className="max-w-xs">
-            <Card>
-              <CardHeader className="text-center border-b">
-                <CardTitle className="text-lg">Basic</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="text-center mb-6">
-                  <div className="text-4xl font-bold text-primary">₹50</div>
-                  <div className="text-sm text-muted-foreground mt-1">Valid price for 3 Months</div>
+        {/* Company Info */}
+        {company && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Company Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Company Name:</span>
+                  <p className="font-medium text-lg">{company.name}</p>
                 </div>
-
-                <div className="space-y-2 text-sm">
-                  {planFeatures.map((feature, index) => (
-                    <div key={index} className="flex items-center justify-between">
-                      <span className="text-muted-foreground">{feature.name}</span>
-                      <div className="flex items-center gap-2">
-                        {feature.value && <span className="text-foreground">{feature.value}</span>}
-                        {feature.limit && <span className="text-foreground">{feature.limit}</span>}
-                        {feature.included ? (
-                          <Check className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <X className="h-4 w-4 text-red-600" />
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <span className="text-muted-foreground">Email:</span>
+                  <p className="font-medium">{company.email}</p>
                 </div>
-
-                <div className="text-center mt-6">
-                  <a href="#" className="text-sm text-primary hover:underline">
-                    This is a free plan
-                  </a>
+                <div>
+                  <span className="text-muted-foreground">Max Employees:</span>
+                  <p className="font-medium">{company.maxEmployees}</p>
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full bg-green-600 hover:bg-green-700" 
-                  onClick={() => setShowPaymentDialog(true)}
-                  data-testid="button-subscribe"
-                >
-                  Subscribe
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
-        </div>
-
-        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle>Choose Payment Method</DialogTitle>
-            </DialogHeader>
-            
-            <div className="space-y-4">
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Plan:</span>
-                  <span className="font-medium">Basic</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Base Price:</span>
-                  <span className="font-medium">₹{basePrice}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Price Per User:</span>
-                  <span className="font-medium">₹{pricePerUser}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Included Users:</span>
-                  <span className="font-medium">{includedUsers}</span>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>
+                  <p className="font-medium capitalize">{company.status}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
 
-              <div>
-                <label className="text-sm text-muted-foreground block mb-2">
-                  Number of Additional Users
-                </label>
-                <div className="flex items-center gap-0">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setAdditionalUsers(Math.max(0, additionalUsers - 1))}
-                    className="rounded-r-none"
-                    data-testid="button-decrease-users"
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <div className="flex-1 h-9 flex items-center justify-center border-y bg-background text-center font-medium">
-                    {additionalUsers}
+        {/* Selected Plan */}
+        {plan && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Selected Subscription Plan</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold">{plan.displayName}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Up to {plan.maxEmployees} employees
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-primary">
+                    ₹{plan.price.toLocaleString('en-IN')}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setAdditionalUsers(additionalUsers + 1)}
-                    className="rounded-l-none"
-                    data-testid="button-increase-users"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
+                  <p className="text-sm text-muted-foreground">per month</p>
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2 border-t">
-                <div className="text-lg">
-                  <span className="text-muted-foreground mr-2">Total Price:</span>
-                  <span className="font-bold">₹{totalPrice.toFixed(2)}</span>
+              {plan.features && plan.features.length > 0 && (
+                <div className="mt-4 pt-4 border-t">
+                  <h4 className="font-medium mb-2">Features:</h4>
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline"
-                  onClick={handlePayOnline}
-                  data-testid="button-pay-online"
-                >
-                  Pay Online
-                </Button>
-                <Button 
-                  className="bg-cyan-500 hover:bg-cyan-600" 
-                  onClick={handlePayOffline}
-                  data-testid="button-pay-offline"
-                >
-                  Pay Offline
-                </Button>
-              </div>
-
-              <div className="bg-muted/50 p-4 rounded-md text-sm">
-                <p className="text-muted-foreground">
-                  For offline payment, please make your payment to the following bank account number:{" "}
-                  <span className="font-medium text-foreground">1234567890</span>
-                </p>
-              </div>
+        {/* Help Section */}
+        <Card className="mt-6 bg-blue-50 border-blue-200">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-2">
+              <h3 className="font-semibold">Need Help?</h3>
+              <p className="text-sm text-muted-foreground">
+                If you have any questions about your registration or need assistance, please contact our support team.
+              </p>
+              <Button variant="outline" className="mt-2" data-testid="button-contact-support">
+                Contact Support
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

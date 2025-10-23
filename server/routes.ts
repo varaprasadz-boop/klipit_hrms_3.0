@@ -348,6 +348,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get plan by ID (authenticated users)
+  app.get("/api/plans/:id", requireAuth, async (req, res) => {
+    try {
+      const plan = await storage.getPlan(req.params.id);
+      
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      res.json(plan);
+    } catch (error) {
+      console.error("Get plan by ID error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get all plans (super admin only)
   app.get("/api/plans/all", requireSuperAdmin, async (req, res) => {
     try {
