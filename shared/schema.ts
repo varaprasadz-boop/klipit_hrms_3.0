@@ -41,6 +41,7 @@ export const registerCompanySchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   email: z.string().email("Valid email is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  planId: z.string().min(1, "Plan selection is required"),
 });
 
 export type RegisterCompany = z.infer<typeof registerCompanySchema>;

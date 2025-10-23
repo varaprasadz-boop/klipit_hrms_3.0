@@ -42,10 +42,11 @@ Preferred communication style: Simple, everyday language.
 - **ORM**: Drizzle ORM for type-safe database operations.
 - **Implementation**: `DbStorage` class in `server/db-storage.ts` implements all CRUD operations.
 - **Persistence**: All data persists across server restarts.
-- **Seeding**: Only creates super admin user via `server/seed.ts` (production-ready, no demo data).
+- **Seeding**: Creates super admin user and 3 default subscription plans via `server/seed.ts` (production-ready, no demo data).
 - **Schema**: 
-  - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected)
+  - `companies`: Multi-tenant records with status field (pending/active/suspended/rejected), plan, maxEmployees
   - `users`: Employee records with role, company, department, position
+  - `plans`: Subscription plans with pricing, duration, employee limits, and features
   - `CompanyStatus` enum: pending (default for new registrations), active (approved by super admin), suspended, rejected
 
 ### Authentication Flow
@@ -53,14 +54,32 @@ Preferred communication style: Simple, everyday language.
 - **Process**: POST to `/api/auth/login`, server validates credentials, creates session token, client stores token and user data.
 - **Route Protection**: `ProtectedRoute` component enforces authentication and role requirements, redirecting unauthorized users.
 - **Company Registration**: 
-  - POST to `/api/auth/register` with company name, admin details (firstName, lastName, email, password, phone, gender), and payment method
+  - POST to `/api/auth/register` with company name, admin details (firstName, lastName, email, password, phone, gender), and selected planId
+  - Users select from active subscription plans (Basic ₹5k, Standard ₹10k, Premium ₹20k per month)
   - Atomically creates both company entity (with "pending" status) and admin user
+  - Selected plan determines company's maxEmployees limit and plan tier
   - After registration, company admin can immediately login with email/password
   - Pending companies are redirected to `/waiting-approval` page where they can view approval status and logout
   - After super admin approves payment request, company status changes to "active"
   - Active companies are redirected to full admin dashboard (`/dashboard/admin`) on login
 
 ### Key Features
+
+#### Subscription Plans System
+- **Functionality**: Tiered pricing model with employee limits and feature sets.
+- **Schema**: `plans` (name, displayName, price, duration, maxEmployees, features array, isActive flag).
+- **Plans**: Three default tiers seeded automatically:
+  - **Basic Plan**: ₹5,000/month for up to 50 employees
+  - **Standard Plan**: ₹10,000/month for up to 100 employees
+  - **Premium Plan**: ₹20,000/month for up to 500 employees
+- **Registration**: Companies select plan during sign-up; plan determines maxEmployees limit.
+- **API Endpoints**:
+  - `GET /api/plans` - Public endpoint for active plans (used during registration)
+  - `GET /api/plans/all` - Super admin: view all plans
+  - `POST /api/plans` - Super admin: create new plan
+  - `PATCH /api/plans/:id` - Super admin: update plan
+  - `DELETE /api/plans/:id` - Super admin: delete plan
+- **Validation**: Backend validates plan exists and is active before registration; returns 400 for invalid selections.
 
 #### Payroll Management System
 - **Functionality**: Automatic generation, approval workflows, payslip management.

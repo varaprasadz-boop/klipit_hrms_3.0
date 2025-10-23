@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { Eye, EyeOff, Globe, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth-context";
 import { apiRequest } from "@/lib/queryClient";
+import type { Plan } from "@shared/schema";
 
 export default function RegisterCompany() {
   const [, setLocation] = useLocation();
@@ -28,6 +30,11 @@ export default function RegisterCompany() {
     email: "",
     password: "",
     confirmPassword: "",
+    planId: "",
+  });
+
+  const { data: plans = [], isLoading: plansLoading } = useQuery<Plan[]>({
+    queryKey: ["/api/plans"],
   });
 
   const handleChange = (field: string, value: string) => {
@@ -41,6 +48,15 @@ export default function RegisterCompany() {
       toast({
         title: "Password mismatch",
         description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.planId) {
+      toast({
+        title: "Plan required",
+        description: "Please select a subscription plan",
         variant: "destructive",
       });
       return;
@@ -226,6 +242,31 @@ export default function RegisterCompany() {
                 {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="plan">Subscription Plan</Label>
+            <Select
+              value={formData.planId}
+              onValueChange={(value) => handleChange("planId", value)}
+              disabled={plansLoading}
+            >
+              <SelectTrigger id="plan" data-testid="select-plan">
+                <SelectValue placeholder={plansLoading ? "Loading plans..." : "Select a plan"} />
+              </SelectTrigger>
+              <SelectContent>
+                {plans.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id} data-testid={`plan-option-${plan.id}`}>
+                    {plan.displayName} - ₹{plan.price}/{plan.duration} month{plan.duration > 1 ? 's' : ''} (up to {plan.maxEmployees} employees)
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {formData.planId && plans.find(p => p.id === formData.planId) && (
+              <p className="text-xs text-muted-foreground">
+                Selected: {plans.find(p => p.id === formData.planId)?.displayName}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">

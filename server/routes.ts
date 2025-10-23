@@ -136,6 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error.name === "ZodError") {
         return res.status(400).json({ error: "Invalid registration data", details: error.errors });
       }
+      if (error.message && (error.message.includes("plan not found") || error.message.includes("plan is not active"))) {
+        return res.status(400).json({ error: error.message });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -86,13 +86,24 @@ export class DbStorage implements IStorage {
     const companyId = randomUUID();
     const userId = randomUUID();
 
+    // Fetch the selected plan to get plan details
+    const selectedPlan = await this.getPlan(data.planId);
+    if (!selectedPlan) {
+      throw new Error("Selected plan not found");
+    }
+
+    // Ensure the plan is active
+    if (!selectedPlan.isActive) {
+      throw new Error("Selected plan is not active");
+    }
+
     const [company] = await db.insert(schema.companies).values({
       id: companyId,
       name: data.companyName,
       email: data.email,
       status: "pending",
-      plan: "basic",
-      maxEmployees: "50",
+      plan: selectedPlan.name,
+      maxEmployees: selectedPlan.maxEmployees.toString(),
       phone: data.phone,
       primaryColor: "#00C853",
       secondaryColor: "#000000",
