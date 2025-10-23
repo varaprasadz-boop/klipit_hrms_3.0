@@ -178,7 +178,15 @@ export default function RegisterCompany() {
   };
 
   const handleOnlinePayment = async () => {
+    console.log("Card data:", cardData);
+    
     if (!cardData.cardNumber || !cardData.expiryMonth || !cardData.expiryYear || !cardData.cvv) {
+      console.log("Validation failed:", {
+        hasCardNumber: !!cardData.cardNumber,
+        hasMonth: !!cardData.expiryMonth,
+        hasYear: !!cardData.expiryYear,
+        hasCVV: !!cardData.cvv,
+      });
       toast({
         title: "Card details required",
         description: "Please enter all card details",
