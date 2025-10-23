@@ -8,18 +8,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Globe, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function RegisterCompany() {
   const [, setLocation] = useLocation();
+  const { login } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    companyName: "",
+    adminFirstName: "",
+    adminLastName: "",
     phone: "",
     gender: "male",
     email: "",
@@ -55,13 +58,24 @@ export default function RegisterCompany() {
     setLoading(true);
 
     try {
-      // Store email for future use
-      localStorage.setItem("registrationEmail", formData.email);
+      const { confirmPassword, ...registrationData } = formData;
+      const response = await apiRequest("POST", "/api/auth/register", registrationData);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed");
+      }
+
+      login(data.user, data.token);
       
-      // TODO: Connect to actual registration API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      toast({
+        title: "Registration successful",
+        description: "Your company has been registered. Awaiting approval from admin.",
+      });
       
-      setShowVerification(true);
+      setTimeout(() => {
+        setLocation("/waiting-approval");
+      }, 100);
     } catch (error: any) {
       toast({
         title: "Registration failed",
@@ -72,69 +86,6 @@ export default function RegisterCompany() {
       setLoading(false);
     }
   };
-
-  const handleResendEmail = () => {
-    toast({
-      title: "Email sent",
-      description: "Verification email has been resent to " + formData.email,
-    });
-  };
-
-  if (showVerification) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-muted/20">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-6">
-              <div className="flex justify-center">
-                <Globe className="h-12 w-12 text-primary" />
-              </div>
-              
-              <h1 className="text-2xl font-bold">Klipit HRMS WORLD</h1>
-              
-              <div className="space-y-2">
-                <h2 className="text-xl font-semibold flex items-center justify-center gap-2">
-                  Verify your email <Mail className="h-5 w-5" />
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Account activation link sent to your email address:{" "}
-                  <span className="font-medium text-foreground">{formData.email}</span>{" "}
-                  Please follow the link inside to continue.
-                </p>
-              </div>
-
-              <Button 
-                className="w-full" 
-                onClick={handleResendEmail}
-                data-testid="button-resend-email"
-              >
-                Resend verification email
-              </Button>
-
-              <div className="space-y-2">
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => setLocation("/waiting-approval")}
-                  data-testid="button-go-dashboard"
-                >
-                  Go to Dashboard
-                </Button>
-                
-                <button
-                  onClick={() => setLocation("/")}
-                  className="text-sm text-primary hover:underline"
-                  data-testid="link-logout"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
@@ -149,26 +100,38 @@ export default function RegisterCompany() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input
+              id="companyName"
+              placeholder="Enter your company name"
+              value={formData.companyName}
+              onChange={(e) => handleChange("companyName", e.target.value)}
+              required
+              data-testid="input-company-name"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="adminFirstName">First Name</Label>
               <Input
-                id="firstName"
+                id="adminFirstName"
                 placeholder="Enter your first name"
-                value={formData.firstName}
-                onChange={(e) => handleChange("firstName", e.target.value)}
+                value={formData.adminFirstName}
+                onChange={(e) => handleChange("adminFirstName", e.target.value)}
                 required
                 data-testid="input-first-name"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name</Label>
+              <Label htmlFor="adminLastName">Last Name</Label>
               <Input
-                id="lastName"
+                id="adminLastName"
                 placeholder="Enter your last name"
-                value={formData.lastName}
-                onChange={(e) => handleChange("lastName", e.target.value)}
+                value={formData.adminLastName}
+                onChange={(e) => handleChange("adminLastName", e.target.value)}
                 required
                 data-testid="input-last-name"
               />

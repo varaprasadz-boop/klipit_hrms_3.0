@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Check, X, Minus, Plus } from "lucide-react";
+import { Check, X, Minus, Plus, LogOut } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 const planFeatures = [
   { name: "Included Users", value: "Upto 1 User", included: true },
@@ -33,10 +35,21 @@ const planFeatures = [
 ];
 
 export default function WaitingApproval() {
+  const [, setLocation] = useLocation();
+  const { logout } = useAuth();
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [additionalUsers, setAdditionalUsers] = useState(6);
   const [showOfflinePending, setShowOfflinePending] = useState(false);
   const { toast } = useToast();
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out.",
+    });
+    setLocation("/login/company");
+  };
 
   const basePrice = 50;
   const pricePerUser = 30;
@@ -65,8 +78,8 @@ export default function WaitingApproval() {
     <div className="min-h-screen bg-muted/20 p-4">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
-          <div className="flex gap-4 mb-6 text-sm border-b">
-            <a href="/waiting-approval" className="text-primary font-medium border-b-2 border-primary pb-2">Dashboard</a>
+          <div className="flex gap-4 mb-6 text-sm border-b items-center">
+            <a href="/waiting-approval" className="text-primary font-medium border-b-2 border-primary pb-2" data-testid="link-dashboard">Dashboard</a>
             <a href="#" className="text-muted-foreground hover:text-foreground pb-2">Order History</a>
             <a href="/offline-requests" className="text-muted-foreground hover:text-foreground flex items-center gap-1 pb-2">
               Offline Requests
@@ -75,6 +88,16 @@ export default function WaitingApproval() {
               )}
             </a>
             <a href="#" className="text-muted-foreground hover:text-foreground pb-2">Domain Requests</a>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleLogout}
+              className="ml-auto gap-2"
+              data-testid="button-logout"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
           </div>
           
           <h1 className="text-2xl font-bold mb-2">Welcome to the Klipit HRMS WORLD 👍</h1>

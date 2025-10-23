@@ -5,6 +5,7 @@ import {
   insertUserSchema, 
   insertCompanySchema,
   updateCompanySettingsSchema,
+  registerCompanySchema,
   insertDepartmentSchema,
   insertDesignationSchema,
   insertRoleLevelSchema,
@@ -53,6 +54,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Account is not active" });
       }
 
+      // Get company status for company admins and employees
+      let companyStatus = null;
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        companyStatus = company?.status || null;
+      }
+
       const token = createSession(user.id, user.email, user.role, user.companyId);
 
       res.json({
@@ -65,7 +73,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           companyId: user.companyId,
           department: user.department,
           position: user.position,
-        }
+        },
+        companyStatus,
       });
     } catch (error) {
       console.error("Login error:", error);
@@ -82,6 +91,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error("Logout error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const registrationData = registerCompanySchema.parse(req.body);
+
+      const existingUser = await storage.getUserByEmail(registrationData.email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      const existingCompany = await storage.getCompanyByEmail(registrationData.email);
+      if (existingCompany) {
+        return res.status(400).json({ error: "Company already registered with this email" });
+      }
+
+      const { company, user } = await storage.registerCompany(registrationData);
+
+      const token = createSession(user.id, user.email, user.role, user.companyId);
+
+      res.status(201).json({
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+          department: user.department,
+          position: user.position,
+        },
+        company: {
+          id: company.id,
+          name: company.name,
+          status: company.status,
+        }
+      });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid registration data", details: error.errors });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

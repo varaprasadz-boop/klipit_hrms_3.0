@@ -1,5 +1,5 @@
 import { 
-  type User, type InsertUser, type Company, type InsertCompany, type UpdateCompanySettings, UserRole,
+  type User, type InsertUser, type Company, type InsertCompany, type UpdateCompanySettings, type RegisterCompany, UserRole,
   type Department, type InsertDepartment,
   type Designation, type InsertDesignation,
   type RoleLevel, type InsertRoleLevel,
@@ -32,6 +32,7 @@ export interface IStorage {
   getAllCompanies(): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<Company>): Promise<Company | undefined>;
+  registerCompany(data: RegisterCompany): Promise<{ company: Company; user: User }>;
 
   // Departments
   getDepartment(id: string): Promise<Department | undefined>;
@@ -947,6 +948,45 @@ export class MemStorage implements IStorage {
     const updated = { ...company, ...updates };
     this.companies.set(id, updated);
     return updated;
+  }
+
+  async registerCompany(data: RegisterCompany): Promise<{ company: Company; user: User }> {
+    const companyId = randomUUID();
+    const userId = randomUUID();
+
+    const company: Company = {
+      id: companyId,
+      name: data.companyName,
+      email: data.email,
+      status: "pending",
+      plan: "basic",
+      maxEmployees: "50",
+      logoUrl: null,
+      address: null,
+      phone: data.phone,
+      website: null,
+      primaryColor: "#00C853",
+      secondaryColor: "#000000",
+      createdAt: new Date(),
+    };
+
+    const user: User = {
+      id: userId,
+      email: data.email,
+      password: data.password,
+      name: `${data.adminFirstName} ${data.adminLastName}`,
+      role: UserRole.COMPANY_ADMIN,
+      companyId: companyId,
+      department: null,
+      position: "Company Administrator",
+      status: "active",
+      createdAt: new Date(),
+    };
+
+    this.companies.set(companyId, company);
+    this.users.set(userId, user);
+
+    return { company, user };
   }
 
   // Department methods

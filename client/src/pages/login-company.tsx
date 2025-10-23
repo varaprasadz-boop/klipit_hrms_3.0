@@ -26,6 +26,10 @@ export default function CompanyLogin() {
       const response = await apiRequest("POST", "/api/auth/login", { email, password });
       const data = await response.json();
 
+      if (!response.ok) {
+        throw new Error(data.error || "Invalid credentials");
+      }
+
       if (data.user.role !== "COMPANY_ADMIN") {
         toast({
           title: "Access denied",
@@ -40,7 +44,15 @@ export default function CompanyLogin() {
       
       // Small delay to ensure state updates before redirect
       setTimeout(() => {
-        setLocation("/dashboard/admin");
+        // Redirect based on company status
+        if (data.companyStatus === "pending") {
+          setLocation("/waiting-approval");
+        } else if (data.companyStatus === "active") {
+          setLocation("/dashboard/admin");
+        } else {
+          // For suspended or rejected companies
+          setLocation("/waiting-approval");
+        }
       }, 100);
     } catch (error: any) {
       toast({

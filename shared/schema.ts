@@ -3,11 +3,20 @@ import { pgTable, text, varchar, timestamp, boolean, jsonb, date, integer } from
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const CompanyStatus = {
+  PENDING: "pending",
+  ACTIVE: "active",
+  SUSPENDED: "suspended",
+  REJECTED: "rejected",
+} as const;
+
+export type CompanyStatusType = typeof CompanyStatus[keyof typeof CompanyStatus];
+
 export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
-  status: text("status").notNull().default("active"),
+  status: text("status").notNull().default("pending"),
   plan: text("plan").notNull().default("basic"),
   maxEmployees: text("max_employees").default("50"),
   logoUrl: text("logo_url"),
@@ -23,6 +32,18 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
   id: true,
   createdAt: true,
 });
+
+export const registerCompanySchema = z.object({
+  companyName: z.string().min(1, "Company name is required"),
+  adminFirstName: z.string().min(1, "First name is required"),
+  adminLastName: z.string().min(1, "Last name is required"),
+  phone: z.string().min(10, "Valid phone number is required"),
+  gender: z.string().min(1, "Gender is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+export type RegisterCompany = z.infer<typeof registerCompanySchema>;
 
 export const updateCompanySettingsSchema = z.object({
   name: z.string().optional(),
