@@ -1,5 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import * as schema from "@shared/schema";
 import { storage } from "./storage";
 import { 
   insertUserSchema, 
@@ -34,6 +38,10 @@ import {
   destroySession,
   getSession
 } from "./middleware/auth";
+
+// Database connection for registration endpoints
+const sql = neon(process.env.DATABASE_URL!);
+const db = drizzle(sql, { schema });
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
@@ -355,6 +363,433 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       console.error("Delete plan error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== MULTI-STEP REGISTRATION ====================
+  
+  // Step 1: Start registration - Create session with basic company info
+  app.post("/api/registration/start", async (req, res) => {
+    try {
+      const registrationData = registerCompanySchema.parse(req.body);
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(registrationData.email);
+      if (existingUser) {
+        return res.status(400).json({ error: "Email already registered" });
+      }
+
+      const existingCompany = await storage.getCompanyByEmail(registrationData.email);
+      if (existingCompany) {
+        return res.status(400).json({ error: "Company already registered with this email" });
+      }
+
+      // Create registration session with 24 hour expiry
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+
+      const session = await storage.createRegistrationSession({
+        status: "company_info",
+        sessionData: registrationData,
+        expiresAt,
+      });
+
+      res.status(201).json({ sessionId: session.id });
+    } catch (error: any) {
+      console.error("Start registration error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid registration data", details: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Step 2: Select plan
+  app.post("/api/registration/:sessionId/select-plan", async (req, res) => {
+    try {
+      const { planId } = req.body;
+      const session = await storage.getRegistrationSession(req.params.sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Registration session not found" });
+      }
+
+      if (new Date() > session.expiresAt) {
+        return res.status(410).json({ error: "Registration session expired" });
+      }
+
+      const plan = await storage.getPlan(planId);
+      if (!plan || !plan.isActive) {
+        return res.status(400).json({ error: "Invalid or inactive plan selected" });
+      }
+
+      const updatedSession = await storage.updateRegistrationSession(session.id, {
+        status: "plan_selection",
+        sessionData: { ...session.sessionData, planId },
+      });
+
+      res.json({ success: true, session: updatedSession });
+    } catch (error) {
+      console.error("Select plan error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Step 3: Add additional employees (optional)
+  app.post("/api/registration/:sessionId/add-employees", async (req, res) => {
+    try {
+      const { employees } = req.body; // Array of employee objects
+      const session = await storage.getRegistrationSession(req.params.sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Registration session not found" });
+      }
+
+      if (new Date() > session.expiresAt) {
+        return res.status(410).json({ error: "Registration session expired" });
+      }
+
+      const updatedSession = await storage.updateRegistrationSession(session.id, {
+        status: "employees_setup",
+        sessionData: { ...session.sessionData, additionalEmployees: employees || [] },
+      });
+
+      res.json({ success: true, session: updatedSession });
+    } catch (error) {
+      console.error("Add employees error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Step 4: Initiate payment (online - dummy form)
+  app.post("/api/registration/:sessionId/pay-online", async (req, res) => {
+    try {
+      const { cardNumber, expiryMonth, expiryYear, cvv } = req.body;
+      const session = await storage.getRegistrationSession(req.params.sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Registration session not found" });
+      }
+
+      if (new Date() > session.expiresAt) {
+        return res.status(410).json({ error: "Registration session expired" });
+      }
+
+      const sessionData = session.sessionData as any;
+      const plan = await storage.getPlan(sessionData.planId);
+      if (!plan) {
+        return res.status(400).json({ error: "Selected plan not found" });
+      }
+
+      // Dummy validation - just check fields are present
+      if (!cardNumber || !expiryMonth || !expiryYear || !cvv) {
+        return res.status(400).json({ error: "All card details are required" });
+      }
+
+      // Create company and admin user
+      const companyId = randomUUID();
+      const userId = randomUUID();
+
+      const [company] = await db.insert(schema.companies).values({
+        id: companyId,
+        name: sessionData.companyName,
+        email: sessionData.email,
+        status: "pending",
+        plan: plan.name,
+        maxEmployees: plan.maxEmployees.toString(),
+        phone: sessionData.phone,
+        primaryColor: "#00C853",
+        secondaryColor: "#000000",
+      }).returning();
+
+      const [user] = await db.insert(schema.users).values({
+        id: userId,
+        email: sessionData.email,
+        password: sessionData.password,
+        name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
+        role: "COMPANY_ADMIN",
+        companyId: companyId,
+        position: "Company Administrator",
+        status: "active",
+      }).returning();
+
+      // Create additional employees if any
+      if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+        for (const emp of sessionData.additionalEmployees) {
+          await db.insert(schema.users).values({
+            id: randomUUID(),
+            email: emp.email,
+            password: emp.password || "changeme123",
+            name: emp.name,
+            role: "EMPLOYEE",
+            companyId: companyId,
+            department: emp.department,
+            position: emp.position,
+            status: "active",
+          });
+        }
+      }
+
+      // Create order record (pending approval)
+      const order = await storage.createOrder({
+        companyId: company.id,
+        planId: plan.id,
+        amount: plan.price,
+        currency: "INR",
+        status: "pending",
+        paymentProvider: "dummy",
+        paymentIntentId: `dummy_${Date.now()}`,
+        metadata: { cardLast4: cardNumber.slice(-4) },
+      });
+
+      // Update session
+      await storage.updateRegistrationSession(session.id, {
+        status: "payment_pending",
+        companyId: company.id,
+        sessionData: { ...sessionData, orderId: order.id },
+      });
+
+      const token = createSession(user.id, user.email, user.role, user.companyId);
+
+      res.json({ 
+        success: true, 
+        orderId: order.id,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+        },
+        company: {
+          id: company.id,
+          name: company.name,
+          status: company.status,
+        }
+      });
+    } catch (error) {
+      console.error("Pay online error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Step 4: Initiate payment (offline)
+  app.post("/api/registration/:sessionId/pay-offline", async (req, res) => {
+    try {
+      const { notes } = req.body;
+      const session = await storage.getRegistrationSession(req.params.sessionId);
+      
+      if (!session) {
+        return res.status(404).json({ error: "Registration session not found" });
+      }
+
+      if (new Date() > session.expiresAt) {
+        return res.status(410).json({ error: "Registration session expired" });
+      }
+
+      const sessionData = session.sessionData as any;
+      const plan = await storage.getPlan(sessionData.planId);
+      if (!plan) {
+        return res.status(400).json({ error: "Selected plan not found" });
+      }
+
+      // Create company and admin user
+      const companyId = randomUUID();
+      const userId = randomUUID();
+
+      const [company] = await db.insert(schema.companies).values({
+        id: companyId,
+        name: sessionData.companyName,
+        email: sessionData.email,
+        status: "pending",
+        plan: plan.name,
+        maxEmployees: plan.maxEmployees.toString(),
+        phone: sessionData.phone,
+        primaryColor: "#00C853",
+        secondaryColor: "#000000",
+      }).returning();
+
+      const [user] = await db.insert(schema.users).values({
+        id: userId,
+        email: sessionData.email,
+        password: sessionData.password,
+        name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
+        role: "COMPANY_ADMIN",
+        companyId: companyId,
+        position: "Company Administrator",
+        status: "active",
+      }).returning();
+
+      // Create additional employees if any
+      if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+        for (const emp of sessionData.additionalEmployees) {
+          await db.insert(schema.users).values({
+            id: randomUUID(),
+            email: emp.email,
+            password: emp.password || "changeme123",
+            name: emp.name,
+            role: "EMPLOYEE",
+            companyId: companyId,
+            department: emp.department,
+            position: emp.position,
+            status: "active",
+          });
+        }
+      }
+
+      // Create offline payment request (pending approval)
+      const offlineRequest = await storage.createOfflinePaymentRequest({
+        companyId: company.id,
+        planId: plan.id,
+        amount: plan.price,
+        requestedBy: user.id,
+        notes: notes || "",
+        status: "pending",
+      });
+
+      // Update session
+      await storage.updateRegistrationSession(session.id, {
+        status: "payment_pending",
+        companyId: company.id,
+        sessionData: { ...sessionData, offlineRequestId: offlineRequest.id },
+      });
+
+      const token = createSession(user.id, user.email, user.role, user.companyId);
+
+      res.json({ 
+        success: true, 
+        offlineRequestId: offlineRequest.id,
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          companyId: user.companyId,
+        },
+        company: {
+          id: company.id,
+          name: company.name,
+          status: company.status,
+        }
+      });
+    } catch (error) {
+      console.error("Pay offline error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== SUPER ADMIN - ORDERS & OFFLINE REQUESTS ====================
+
+  // Get all orders (online payments)
+  app.get("/api/orders", requireSuperAdmin, async (req, res) => {
+    try {
+      const orders = await storage.getAllOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error("Get orders error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Approve order (online payment)
+  app.post("/api/orders/:id/approve", requireSuperAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const order = await storage.getOrder(req.params.id);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+
+      // Update order status
+      await storage.updateOrder(order.id, {
+        status: "completed",
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      });
+
+      // Activate company
+      await storage.updateCompany(order.companyId, { status: "active" });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Approve order error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all offline payment requests
+  app.get("/api/offline-requests", requireSuperAdmin, async (req, res) => {
+    try {
+      const requests = await storage.getAllOfflinePaymentRequests();
+      res.json(requests);
+    } catch (error) {
+      console.error("Get offline requests error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Approve offline payment request
+  app.post("/api/offline-requests/:id/approve", requireSuperAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const request = await storage.getOfflinePaymentRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Offline request not found" });
+      }
+
+      // Update request status
+      await storage.updateOfflinePaymentRequest(request.id, {
+        status: "approved",
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+      });
+
+      // Activate company
+      await storage.updateCompany(request.companyId, { status: "active" });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Approve offline request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Reject offline payment request
+  app.post("/api/offline-requests/:id/reject", requireSuperAdmin, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { reason } = req.body;
+      const request = await storage.getOfflinePaymentRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Offline request not found" });
+      }
+
+      // Update request status
+      await storage.updateOfflinePaymentRequest(request.id, {
+        status: "rejected",
+        approvedBy: session.userId,
+        approvedAt: new Date(),
+        rejectionReason: reason || "No reason provided",
+      });
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Reject offline request error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
