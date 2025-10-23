@@ -38,6 +38,7 @@ import {
   destroySession,
   getSession
 } from "./middleware/auth";
+import { hashPassword, verifyPassword } from "./utils/password";
 
 // Database connection for registration endpoints
 const sql = neon(process.env.DATABASE_URL!);
@@ -54,8 +55,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByEmail(email);
       
-      // NOTE: In production, passwords should be hashed using bcrypt or similar
-      if (!user || user.password !== password) {
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Verify password using bcrypt
+      const isValidPassword = await verifyPassword(password, user.password);
+      if (!isValidPassword) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
@@ -385,13 +391,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Company already registered with this email" });
       }
 
+      // Hash password before storing in session
+      const hashedPassword = await hashPassword(registrationData.password);
+
       // Create registration session with 24 hour expiry
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24);
 
+      // Store only non-sensitive data and hashed password
+      const sessionData = {
+        ...registrationData,
+        password: hashedPassword, // Store only hashed password
+      };
+
       const session = await storage.createRegistrationSession({
         status: "company_info",
-        sessionData: registrationData,
+        sessionData,
         expiresAt,
       });
 
@@ -450,9 +465,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(410).json({ error: "Registration session expired" });
       }
 
+      // SECURITY: Sanitize employee data - remove any password fields
+      // Passwords will be generated server-side during account creation
+      const sanitizedEmployees = (employees || []).map((emp: any) => ({
+        name: emp.name,
+        email: emp.email,
+        department: emp.department,
+        position: emp.position,
+        // Explicitly exclude password field for security
+      }));
+
       const updatedSession = await storage.updateRegistrationSession(session.id, {
         status: "employees_setup",
-        sessionData: { ...session.sessionData, additionalEmployees: employees || [] },
+        sessionData: { ...session.sessionData, additionalEmployees: sanitizedEmployees },
       });
 
       res.json({ success: true, session: updatedSession });
@@ -503,10 +528,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secondaryColor: "#000000",
       }).returning();
 
+      // Note: sessionData.password is already hashed during Step 1
       const [user] = await db.insert(schema.users).values({
         id: userId,
         email: sessionData.email,
-        password: sessionData.password,
+        password: sessionData.password, // Already hashed
         name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
         role: "COMPANY_ADMIN",
         companyId: companyId,
@@ -515,12 +541,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       // Create additional employees if any
+      // Note: Employee passwords are always server-generated (never sent from client)
       if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+        const defaultPasswordHash = await hashPassword("changeme123");
         for (const emp of sessionData.additionalEmployees) {
           await db.insert(schema.users).values({
             id: randomUUID(),
             email: emp.email,
-            password: emp.password || "changeme123",
+            password: defaultPasswordHash, // Server-generated hashed password
             name: emp.name,
             role: "EMPLOYEE",
             companyId: companyId,
@@ -611,10 +639,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secondaryColor: "#000000",
       }).returning();
 
+      // Note: sessionData.password is already hashed during Step 1
       const [user] = await db.insert(schema.users).values({
         id: userId,
         email: sessionData.email,
-        password: sessionData.password,
+        password: sessionData.password, // Already hashed
         name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
         role: "COMPANY_ADMIN",
         companyId: companyId,
@@ -623,12 +652,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       // Create additional employees if any
+      // Note: Employee passwords are always server-generated (never sent from client)
       if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+        const defaultPasswordHash = await hashPassword("changeme123");
         for (const emp of sessionData.additionalEmployees) {
           await db.insert(schema.users).values({
             id: randomUUID(),
             email: emp.email,
-            password: emp.password || "changeme123",
+            password: defaultPasswordHash, // Server-generated hashed password
             name: emp.name,
             role: "EMPLOYEE",
             companyId: companyId,

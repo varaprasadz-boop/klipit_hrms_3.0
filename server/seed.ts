@@ -1,5 +1,6 @@
 import { DbStorage } from "./db-storage";
 import { UserRole } from "@shared/schema";
+import { hashPassword } from "./utils/password";
 
 const storage = new DbStorage();
 
@@ -10,9 +11,10 @@ async function seed() {
     // Create super admin user (only essential data for production)
     const superAdmin = await storage.getUserByEmail("superadmin@hrmsworld.com");
     if (!superAdmin) {
+      const hashedPassword = await hashPassword("123456");
       await storage.createUser({
         email: "superadmin@hrmsworld.com",
-        password: "123456",
+        password: hashedPassword,
         name: "Super Admin",
         role: UserRole.SUPER_ADMIN,
         status: "active",
