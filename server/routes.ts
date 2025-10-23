@@ -430,12 +430,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(registrationData.email);
       if (existingUser) {
-        return res.status(400).json({ error: "Email already registered" });
+        return res.status(400).json({ 
+          error: "Email already registered",
+          duplicateField: "email"
+        });
       }
 
       const existingCompany = await storage.getCompanyByEmail(registrationData.email);
       if (existingCompany) {
-        return res.status(400).json({ error: "Company already registered with this email" });
+        return res.status(400).json({ 
+          error: "Company already registered with this email",
+          duplicateField: "email"
+        });
+      }
+
+      // Check if phone already exists
+      const existingCompanyByPhone = await storage.getCompanyByPhone(registrationData.phone);
+      if (existingCompanyByPhone) {
+        return res.status(400).json({ 
+          error: "Phone number already registered",
+          duplicateField: "phone"
+        });
       }
 
       // Hash password before storing in session

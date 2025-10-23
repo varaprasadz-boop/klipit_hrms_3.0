@@ -52,6 +52,7 @@ export default function RegisterCompany() {
   });
 
   const [offlineNotes, setOfflineNotes] = useState("");
+  const [duplicateFields, setDuplicateFields] = useState<string[]>([]);
 
   const { data: plans = [], isLoading: plansLoading } = useQuery<Plan[]>({
     queryKey: ["/api/plans"],
@@ -88,9 +89,26 @@ export default function RegisterCompany() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Registration failed");
+        // Check if there's a duplicate field error
+        if (data.duplicateField) {
+          setDuplicateFields([data.duplicateField]);
+          toast({
+            title: "Duplicate data detected",
+            description: data.error || "Please change the highlighted field and try again",
+            variant: "destructive",
+          });
+        } else {
+          setDuplicateFields([]);
+          toast({
+            title: "Registration failed",
+            description: data.error || "Something went wrong",
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
+      setDuplicateFields([]);
       setSessionId(data.sessionId);
       setCurrentStep(2);
       toast({
@@ -98,6 +116,7 @@ export default function RegisterCompany() {
         description: "Please select a subscription plan",
       });
     } catch (error: any) {
+      setDuplicateFields([]);
       toast({
         title: "Registration failed",
         description: error.message || "Something went wrong",
@@ -372,16 +391,25 @@ export default function RegisterCompany() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
+                    <Label htmlFor="phone" className={duplicateFields.includes("phone") ? "text-destructive" : ""}>
+                      Phone Number {duplicateFields.includes("phone") && <span className="text-destructive">*</span>}
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="Enter your phone number"
                       value={step1Data.phone}
-                      onChange={(e) => setStep1Data({ ...step1Data, phone: e.target.value })}
+                      onChange={(e) => {
+                        setStep1Data({ ...step1Data, phone: e.target.value });
+                        setDuplicateFields(duplicateFields.filter(f => f !== "phone"));
+                      }}
                       required
+                      className={duplicateFields.includes("phone") ? "border-destructive focus-visible:ring-destructive" : ""}
                       data-testid="input-phone"
                     />
+                    {duplicateFields.includes("phone") && (
+                      <p className="text-sm text-destructive">This phone number is already registered</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -403,16 +431,25 @@ export default function RegisterCompany() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className={duplicateFields.includes("email") ? "text-destructive" : ""}>
+                    Email {duplicateFields.includes("email") && <span className="text-destructive">*</span>}
+                  </Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="Enter your email"
                     value={step1Data.email}
-                    onChange={(e) => setStep1Data({ ...step1Data, email: e.target.value })}
+                    onChange={(e) => {
+                      setStep1Data({ ...step1Data, email: e.target.value });
+                      setDuplicateFields(duplicateFields.filter(f => f !== "email"));
+                    }}
                     required
+                    className={duplicateFields.includes("email") ? "border-destructive focus-visible:ring-destructive" : ""}
                     data-testid="input-email"
                   />
+                  {duplicateFields.includes("email") && (
+                    <p className="text-sm text-destructive">This email is already registered</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
