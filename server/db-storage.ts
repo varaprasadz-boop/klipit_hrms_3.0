@@ -163,26 +163,26 @@ export class DbStorage implements IStorage {
 
   // RoleLevel methods
   async getRoleLevel(id: string): Promise<RoleLevel | undefined> {
-    const [roleLevel] = await db.select().from(schema.roleLevels).where(eq(schema.roleLevels.id, id));
+    const [roleLevel] = await db.select().from(schema.rolesLevels).where(eq(schema.rolesLevels.id, id));
     return roleLevel;
   }
 
   async getRoleLevelsByCompany(companyId: string): Promise<RoleLevel[]> {
-    return await db.select().from(schema.roleLevels).where(eq(schema.roleLevels.companyId, companyId));
+    return await db.select().from(schema.rolesLevels).where(eq(schema.rolesLevels.companyId, companyId));
   }
 
   async createRoleLevel(insertRoleLevel: InsertRoleLevel): Promise<RoleLevel> {
-    const [roleLevel] = await db.insert(schema.roleLevels).values(insertRoleLevel).returning();
+    const [roleLevel] = await db.insert(schema.rolesLevels).values(insertRoleLevel).returning();
     return roleLevel;
   }
 
   async updateRoleLevel(id: string, updates: Partial<RoleLevel>): Promise<RoleLevel | undefined> {
-    const [roleLevel] = await db.update(schema.roleLevels).set(updates).where(eq(schema.roleLevels.id, id)).returning();
+    const [roleLevel] = await db.update(schema.rolesLevels).set(updates).where(eq(schema.rolesLevels.id, id)).returning();
     return roleLevel;
   }
 
   async deleteRoleLevel(id: string): Promise<boolean> {
-    const result = await db.delete(schema.roleLevels).where(eq(schema.roleLevels.id, id));
+    const result = await db.delete(schema.rolesLevels).where(eq(schema.rolesLevels.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 
@@ -412,7 +412,7 @@ export class DbStorage implements IStorage {
   }
 
   async getPayrollItemsByPayroll(payrollId: string): Promise<PayrollItem[]> {
-    return await db.select().from(schema.payrollItems).where(eq(schema.payrollItems.payrollRecordId, payrollId));
+    return await db.select().from(schema.payrollItems).where(eq(schema.payrollItems.payrollId, payrollId));
   }
 
   async createPayrollItem(insertItem: InsertPayrollItem): Promise<PayrollItem> {
