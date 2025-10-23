@@ -4,6 +4,7 @@ import { eq, and } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import type {
   User, InsertUser, Company, InsertCompany, RegisterCompany, UserRole,
+  Plan, InsertPlan,
   Department, InsertDepartment,
   Designation, InsertDesignation,
   RoleLevel, InsertRoleLevel,
@@ -109,6 +110,35 @@ export class DbStorage implements IStorage {
     }).returning();
 
     return { company, user };
+  }
+
+  // Plan methods
+  async getPlan(id: string): Promise<Plan | undefined> {
+    const [plan] = await db.select().from(schema.plans).where(eq(schema.plans.id, id));
+    return plan;
+  }
+
+  async getAllPlans(): Promise<Plan[]> {
+    return await db.select().from(schema.plans);
+  }
+
+  async getActivePlans(): Promise<Plan[]> {
+    return await db.select().from(schema.plans).where(eq(schema.plans.isActive, true));
+  }
+
+  async createPlan(insertPlan: InsertPlan): Promise<Plan> {
+    const [plan] = await db.insert(schema.plans).values(insertPlan).returning();
+    return plan;
+  }
+
+  async updatePlan(id: string, updates: Partial<Plan>): Promise<Plan | undefined> {
+    const [plan] = await db.update(schema.plans).set(updates).where(eq(schema.plans.id, id)).returning();
+    return plan;
+  }
+
+  async deletePlan(id: string): Promise<boolean> {
+    const result = await db.delete(schema.plans).where(eq(schema.plans.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
   }
 
   // Department methods

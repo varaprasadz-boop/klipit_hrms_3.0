@@ -1,5 +1,6 @@
 import { 
   type User, type InsertUser, type Company, type InsertCompany, type UpdateCompanySettings, type RegisterCompany, UserRole,
+  type Plan, type InsertPlan,
   type Department, type InsertDepartment,
   type Designation, type InsertDesignation,
   type RoleLevel, type InsertRoleLevel,
@@ -34,6 +35,14 @@ export interface IStorage {
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<Company>): Promise<Company | undefined>;
   registerCompany(data: RegisterCompany): Promise<{ company: Company; user: User }>;
+
+  // Plans
+  getPlan(id: string): Promise<Plan | undefined>;
+  getAllPlans(): Promise<Plan[]>;
+  getActivePlans(): Promise<Plan[]>;
+  createPlan(plan: InsertPlan): Promise<Plan>;
+  updatePlan(id: string, updates: Partial<Plan>): Promise<Plan | undefined>;
+  deletePlan(id: string): Promise<boolean>;
 
   // Departments
   getDepartment(id: string): Promise<Department | undefined>;

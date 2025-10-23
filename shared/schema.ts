@@ -59,6 +59,27 @@ export type InsertCompany = z.infer<typeof insertCompanySchema>;
 export type UpdateCompanySettings = z.infer<typeof updateCompanySettingsSchema>;
 export type Company = typeof companies.$inferSelect;
 
+// Plans/Packages
+export const plans = pgTable("plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // internal name like "basic", "premium"
+  displayName: text("display_name").notNull(), // display name like "Basic Plan"
+  duration: integer("duration").notNull().default(1), // duration in months
+  price: integer("price").notNull().default(0), // price in rupees
+  maxEmployees: integer("max_employees").notNull().default(50),
+  features: jsonb("features").notNull().default([]), // array of feature strings
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertPlanSchema = createInsertSchema(plans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlan = z.infer<typeof insertPlanSchema>;
+export type Plan = typeof plans.$inferSelect;
+
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: text("email").notNull().unique(),

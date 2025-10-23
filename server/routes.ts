@@ -6,6 +6,7 @@ import {
   insertCompanySchema,
   updateCompanySettingsSchema,
   registerCompanySchema,
+  insertPlanSchema,
   insertDepartmentSchema,
   insertDesignationSchema,
   insertRoleLevelSchema,
@@ -282,6 +283,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, company });
     } catch (error) {
       console.error("Reject payment request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ==================== PLANS ====================
+  
+  // Get active plans (public - for registration)
+  app.get("/api/plans", async (req, res) => {
+    try {
+      const plans = await storage.getActivePlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Get active plans error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get all plans (super admin only)
+  app.get("/api/plans/all", requireSuperAdmin, async (req, res) => {
+    try {
+      const plans = await storage.getAllPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Get all plans error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create plan (super admin only)
+  app.post("/api/plans", requireSuperAdmin, async (req, res) => {
+    try {
+      const planData = insertPlanSchema.parse(req.body);
+      const plan = await storage.createPlan(planData);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Create plan error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update plan (super admin only)
+  app.patch("/api/plans/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const updates = req.body;
+      const plan = await storage.updatePlan(req.params.id, updates);
+      
+      if (!plan) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      res.json(plan);
+    } catch (error) {
+      console.error("Update plan error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete plan (super admin only)
+  app.delete("/api/plans/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const success = await storage.deletePlan(req.params.id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Plan not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete plan error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
