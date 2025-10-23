@@ -2,6 +2,7 @@ import DashboardLayout from "@/components/DashboardLayout";
 import StatsCard from "@/components/StatsCard";
 import WorkflowKanban from "@/components/WorkflowKanban";
 import NoticeboardFeed from "@/components/NoticeboardFeed";
+import { useQuery } from "@tanstack/react-query";
 import { 
   LayoutDashboard, Users, Clock, Umbrella, Workflow, 
   Receipt, Megaphone, FileText, UserPlus, Shield, 
@@ -63,6 +64,46 @@ const menuItems = [
 ];
 
 export default function AdminDashboard() {
+  const { data: employees = [], isLoading: employeesLoading } = useQuery({ 
+    queryKey: ['/api/employees'] 
+  });
+
+  const { data: attendanceRecords = [], isLoading: attendanceLoading } = useQuery({ 
+    queryKey: ['/api/attendance-records'] 
+  });
+
+  const { data: workflows = [], isLoading: workflowsLoading } = useQuery({ 
+    queryKey: ['/api/workflows'] 
+  });
+
+  // Note: Leave requests endpoint not implemented yet, will show 0 until API is ready
+  const { data: leaveRequests = [], isLoading: leaveLoading } = useQuery({ 
+    queryKey: ['/api/leave-requests'],
+    retry: false,
+    // Will fail gracefully until endpoint is implemented
+  });
+
+  // Calculate stats
+  const totalEmployees = employees.length;
+  
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date().toISOString().split('T')[0];
+  const presentToday = attendanceRecords.filter((record: any) => 
+    record.date === today && record.status === 'present'
+  ).length;
+  
+  const attendancePercentage = totalEmployees > 0 
+    ? Math.round((presentToday / totalEmployees) * 100) 
+    : 0;
+
+  const pendingWorkflows = workflows.filter((w: any) => 
+    w.status === 'pending' || w.status === 'in_progress'
+  ).length;
+
+  const pendingLeaveRequests = leaveRequests.filter((l: any) => 
+    l.status === 'pending'
+  ).length;
+
   return (
     <DashboardLayout menuItems={menuItems} userType="admin">
       <div className="space-y-6">
@@ -74,27 +115,25 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatsCard
             title="Total Employees"
-            value="245"
+            value={employeesLoading ? "..." : totalEmployees.toString()}
             icon={Users}
             description="Active employees"
-            trend={{ value: "12% from last month", positive: true }}
           />
           <StatsCard
             title="Present Today"
-            value="238"
+            value={attendanceLoading ? "..." : presentToday.toString()}
             icon={UserCheck}
-            description="97% attendance"
-            trend={{ value: "3% from yesterday", positive: true }}
+            description={`${attendancePercentage}% attendance`}
           />
           <StatsCard
             title="Leave Requests"
-            value="8"
+            value={leaveLoading ? "..." : pendingLeaveRequests.toString()}
             icon={CalendarCheck}
             description="Pending approvals"
           />
           <StatsCard
             title="Open Workflows"
-            value="15"
+            value={workflowsLoading ? "..." : pendingWorkflows.toString()}
             icon={Workflow}
             description="Require action"
           />
