@@ -167,6 +167,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Super Admin Dashboard Statistics
+  app.get("/api/superadmin/stats", requireSuperAdmin, async (req, res) => {
+    try {
+      const companies = await storage.getAllCompanies();
+      const users = await storage.getAllUsers();
+      const plans = await storage.getAllPlans();
+      
+      // Calculate statistics
+      const activeCompanies = companies.filter(c => c.status === "active");
+      
+      // Calculate monthly revenue from active companies
+      let monthlyRevenue = 0;
+      for (const company of activeCompanies) {
+        const plan = plans.find(p => p.id === company.planId);
+        if (plan) {
+          monthlyRevenue += plan.price;
+        }
+      }
+      
+      res.json({
+        totalCompanies: companies.length,
+        activeCompanies: activeCompanies.length,
+        totalUsers: users.length,
+        monthlyRevenue,
+      });
+    } catch (error) {
+      console.error("Get dashboard stats error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/companies/:id", requireAuth, enforceCompanyScope, async (req, res) => {
     try {
       const company = await storage.getCompany(req.params.id);

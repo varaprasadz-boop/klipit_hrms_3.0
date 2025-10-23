@@ -1,12 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import StatsCard from "@/components/StatsCard";
 import CompanyManagementTable from "@/components/CompanyManagementTable";
-import { Building2, Users, ShoppingCart, TrendingUp } from "lucide-react";
+import { Building2, Users, TrendingUp } from "lucide-react";
 import type { Company } from "@shared/schema";
+
+interface DashboardStats {
+  totalCompanies: number;
+  activeCompanies: number;
+  totalUsers: number;
+  monthlyRevenue: number;
+}
 
 export default function SuperAdminDashboardPage() {
   const { data: companies = [] } = useQuery<Company[]>({
     queryKey: ["/api/companies"],
+  });
+
+  const { data: stats } = useQuery<DashboardStats>({
+    queryKey: ["/api/superadmin/stats"],
   });
 
   const activeCompanies = companies.filter(c => c.status === "active").length;
@@ -35,16 +46,15 @@ export default function SuperAdminDashboardPage() {
         />
         <StatsCard
           title="Total Users"
-          value={156}
+          value={stats?.totalUsers ?? 0}
           icon={Users}
           description="All platform users"
         />
         <StatsCard
           title="Revenue"
-          value="₹24,500"
+          value={`₹${stats?.monthlyRevenue?.toLocaleString('en-IN') ?? '0'}`}
           icon={TrendingUp}
           description="This month"
-          trend={{ value: "+12.5%", positive: true }}
         />
       </div>
 
