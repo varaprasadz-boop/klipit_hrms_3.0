@@ -33,6 +33,7 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
   createdAt: true,
 });
 
+// Step 1: Company basic info (multi-step registration)
 export const registerCompanySchema = z.object({
   companyName: z.string().min(1, "Company name is required"),
   adminFirstName: z.string().min(1, "First name is required"),
@@ -41,7 +42,6 @@ export const registerCompanySchema = z.object({
   gender: z.string().min(1, "Gender is required"),
   email: z.string().email("Valid email is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  planId: z.string().min(1, "Plan selection is required"),
 });
 
 export type RegisterCompany = z.infer<typeof registerCompanySchema>;
@@ -80,6 +80,105 @@ export const insertPlanSchema = createInsertSchema(plans).omit({
 
 export type InsertPlan = z.infer<typeof insertPlanSchema>;
 export type Plan = typeof plans.$inferSelect;
+
+// Registration Sessions - Multi-step registration tracking
+export const RegistrationStatus = {
+  COMPANY_INFO: "company_info",
+  PLAN_SELECTION: "plan_selection",
+  EMPLOYEES_SETUP: "employees_setup",
+  PAYMENT_PENDING: "payment_pending",
+  COMPLETED: "completed",
+} as const;
+
+export type RegistrationStatusType = typeof RegistrationStatus[keyof typeof RegistrationStatus];
+
+export const registrationSessions = pgTable("registration_sessions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  status: text("status").notNull().default("company_info"),
+  sessionData: jsonb("session_data").notNull().default({}), // Stores company info, plan selection, additional employees
+  companyId: varchar("company_id"), // Set after company creation
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertRegistrationSessionSchema = createInsertSchema(registrationSessions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertRegistrationSession = z.infer<typeof insertRegistrationSessionSchema>;
+export type RegistrationSession = typeof registrationSessions.$inferSelect;
+
+// Orders - Online payment tracking
+export const OrderStatus = {
+  PENDING: "pending",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+} as const;
+
+export type OrderStatusType = typeof OrderStatus[keyof typeof OrderStatus];
+
+export const orders = pgTable("orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull(),
+  planId: varchar("plan_id").notNull().references(() => plans.id),
+  amount: integer("amount").notNull(), // Amount in rupees
+  currency: text("currency").notNull().default("INR"),
+  status: text("status").notNull().default("pending"),
+  paymentProvider: text("payment_provider").default("stripe"), // stripe, razorpay, etc
+  paymentIntentId: text("payment_intent_id"), // External payment ID from provider
+  metadata: jsonb("metadata").default({}), // Additional payment metadata
+  approvedBy: varchar("approved_by"), // Super admin who approved
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type Order = typeof orders.$inferSelect;
+
+// Offline Payment Requests
+export const OfflinePaymentStatus = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  REJECTED: "rejected",
+} as const;
+
+export type OfflinePaymentStatusType = typeof OfflinePaymentStatus[keyof typeof OfflinePaymentStatus];
+
+export const offlinePaymentRequests = pgTable("offline_payment_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull(),
+  planId: varchar("plan_id").notNull().references(() => plans.id),
+  amount: integer("amount").notNull(), // Amount in rupees
+  requestedBy: varchar("requested_by").notNull(), // User who requested
+  notes: text("notes"), // User's notes/details about offline payment
+  status: text("status").notNull().default("pending"),
+  attachmentUrls: jsonb("attachment_urls").default([]), // Payment proof attachments
+  approvedBy: varchar("approved_by"), // Super admin who approved/rejected
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertOfflinePaymentRequestSchema = createInsertSchema(offlinePaymentRequests).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertOfflinePaymentRequest = z.infer<typeof insertOfflinePaymentRequestSchema>;
+export type OfflinePaymentRequest = typeof offlinePaymentRequests.$inferSelect;
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
