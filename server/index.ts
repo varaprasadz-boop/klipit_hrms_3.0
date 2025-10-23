@@ -1,8 +1,17 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cors from 'cors';
 
 const app = express();
+
+// Allow requests from your frontend
+app.use(cors({
+  origin: 'https://hrmsworld.in',
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

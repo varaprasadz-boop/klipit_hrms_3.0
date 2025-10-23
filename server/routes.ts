@@ -5,8 +5,8 @@ import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import * as schema from "@shared/schema";
 import { storage } from "./storage";
-import { 
-  insertUserSchema, 
+import {
+  insertUserSchema,
   insertCompanySchema,
   updateCompanySettingsSchema,
   registerCompanySchema,
@@ -27,16 +27,16 @@ import {
   insertWorkflowSchema,
   updateWorkflowSchema,
   type ExpenseClaim,
-  UserRole 
+  UserRole,
 } from "@shared/schema";
-import { 
-  requireAuth, 
-  requireSuperAdmin, 
-  requireCompanyAdmin, 
+import {
+  requireAuth,
+  requireSuperAdmin,
+  requireCompanyAdmin,
   enforceCompanyScope,
   createSession,
   destroySession,
-  getSession
+  getSession,
 } from "./middleware/auth";
 import { hashPassword, verifyPassword } from "./utils/password";
 
@@ -48,13 +48,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
-        return res.status(400).json({ error: "Email and password are required" });
+        return res
+          .status(400)
+          .json({ error: "Email and password are required" });
       }
 
       const user = await storage.getUserByEmail(email);
-      
+
       if (!user) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
@@ -76,7 +78,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         companyStatus = company?.status || null;
       }
 
-      const token = createSession(user.id, user.email, user.role, user.companyId);
+      const token = createSession(
+        user.id,
+        user.email,
+        user.role,
+        user.companyId,
+      );
 
       res.json({
         token,
@@ -99,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/logout", requireAuth, async (req, res) => {
     try {
-      const token = req.headers['authorization']?.replace('Bearer ', '');
+      const token = req.headers["authorization"]?.replace("Bearer ", "");
       if (token) {
         destroySession(token);
       }
@@ -119,14 +126,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email already registered" });
       }
 
-      const existingCompany = await storage.getCompanyByEmail(registrationData.email);
+      const existingCompany = await storage.getCompanyByEmail(
+        registrationData.email,
+      );
       if (existingCompany) {
-        return res.status(400).json({ error: "Company already registered with this email" });
+        return res
+          .status(400)
+          .json({ error: "Company already registered with this email" });
       }
 
       const { company, user } = await storage.registerCompany(registrationData);
 
-      const token = createSession(user.id, user.email, user.role, user.companyId);
+      const token = createSession(
+        user.id,
+        user.email,
+        user.role,
+        user.companyId,
+      );
 
       res.status(201).json({
         token,
@@ -143,14 +159,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: company.id,
           name: company.name,
           status: company.status,
-        }
+        },
       });
     } catch (error: any) {
       console.error("Registration error:", error);
       if (error.name === "ZodError") {
-        return res.status(400).json({ error: "Invalid registration data", details: error.errors });
+        return res
+          .status(400)
+          .json({ error: "Invalid registration data", details: error.errors });
       }
-      if (error.message && (error.message.includes("plan not found") || error.message.includes("plan is not active"))) {
+      if (
+        error.message &&
+        (error.message.includes("plan not found") ||
+          error.message.includes("plan is not active"))
+      ) {
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: "Internal server error" });
@@ -173,19 +195,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companies = await storage.getAllCompanies();
       const users = await storage.getAllUsers();
       const plans = await storage.getAllPlans();
-      
+
       // Calculate statistics
-      const activeCompanies = companies.filter(c => c.status === "active");
-      
+      const activeCompanies = companies.filter((c) => c.status === "active");
+
       // Calculate monthly revenue from active companies
       let monthlyRevenue = 0;
       for (const company of activeCompanies) {
-        const plan = plans.find(p => p.id === company.planId);
+        const plan = plans.find((p) => p.id === company.planId);
         if (plan) {
           monthlyRevenue += plan.price;
         }
       }
-      
+
       res.json({
         totalCompanies: companies.length,
         activeCompanies: activeCompanies.length,
@@ -198,25 +220,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/companies/:id", requireAuth, enforceCompanyScope, async (req, res) => {
-    try {
-      const company = await storage.getCompany(req.params.id);
-      
-      if (!company) {
-        return res.status(404).json({ error: "Company not found" });
-      }
+  app.get(
+    "/api/companies/:id",
+    requireAuth,
+    enforceCompanyScope,
+    async (req, res) => {
+      try {
+        const company = await storage.getCompany(req.params.id);
 
-      res.json(company);
-    } catch (error) {
-      console.error("Get company error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+
+        res.json(company);
+      } catch (error) {
+        console.error("Get company error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
 
   app.post("/api/companies", requireSuperAdmin, async (req, res) => {
     try {
       const companyData = insertCompanySchema.parse(req.body);
-      
+
       const existing = await storage.getCompanyByEmail(companyData.email);
       if (existing) {
         return res.status(400).json({ error: "Company email already exists" });
@@ -233,7 +260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/companies/:id", requireSuperAdmin, async (req, res) => {
     try {
       const { status, plan, maxEmployees } = req.body;
-      
+
       const company = await storage.updateCompany(req.params.id, {
         ...(status && { status }),
         ...(plan && { plan }),
@@ -255,22 +282,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const companies = await storage.getAllCompanies();
       const users = await storage.getAllUsers();
-      
+
       // Map companies to payment request format
-      const requests = companies.map(company => {
-        const admin = users.find(u => u.companyId === company.id && u.role === "COMPANY_ADMIN");
-        
+      const requests = companies.map((company) => {
+        const admin = users.find(
+          (u) => u.companyId === company.id && u.role === "COMPANY_ADMIN",
+        );
+
         // Extract initials from name
         let initials = company.name.substring(0, 2).toUpperCase();
         if (admin?.name) {
           const nameParts = admin.name.trim().split(/\s+/);
           if (nameParts.length >= 2) {
-            initials = `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
+            initials =
+              `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase();
           } else if (nameParts.length === 1 && nameParts[0].length >= 2) {
             initials = nameParts[0].substring(0, 2).toUpperCase();
           }
         }
-        
+
         return {
           id: company.id,
           companyId: company.id,
@@ -301,42 +331,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/payment-requests/:id/approve", requireSuperAdmin, async (req, res) => {
-    try {
-      const companyId = req.params.id;
-      
-      const company = await storage.updateCompany(companyId, { status: "active" });
+  app.post(
+    "/api/payment-requests/:id/approve",
+    requireSuperAdmin,
+    async (req, res) => {
+      try {
+        const companyId = req.params.id;
 
-      if (!company) {
-        return res.status(404).json({ error: "Company not found" });
+        const company = await storage.updateCompany(companyId, {
+          status: "active",
+        });
+
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+
+        res.json({ success: true, company });
+      } catch (error) {
+        console.error("Approve payment request error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
+    },
+  );
 
-      res.json({ success: true, company });
-    } catch (error) {
-      console.error("Approve payment request error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  app.post(
+    "/api/payment-requests/:id/reject",
+    requireSuperAdmin,
+    async (req, res) => {
+      try {
+        const companyId = req.params.id;
 
-  app.post("/api/payment-requests/:id/reject", requireSuperAdmin, async (req, res) => {
-    try {
-      const companyId = req.params.id;
-      
-      const company = await storage.updateCompany(companyId, { status: "rejected" });
+        const company = await storage.updateCompany(companyId, {
+          status: "rejected",
+        });
 
-      if (!company) {
-        return res.status(404).json({ error: "Company not found" });
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+
+        res.json({ success: true, company });
+      } catch (error) {
+        console.error("Reject payment request error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      res.json({ success: true, company });
-    } catch (error) {
-      console.error("Reject payment request error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    },
+  );
 
   // ==================== PLANS ====================
-  
+
   // Get active plans (public - for registration)
   app.get("/api/plans", async (req, res) => {
     try {
@@ -352,7 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/plans/:id", requireAuth, async (req, res) => {
     try {
       const plan = await storage.getPlan(req.params.id);
-      
+
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
       }
@@ -392,7 +434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updates = req.body;
       const plan = await storage.updatePlan(req.params.id, updates);
-      
+
       if (!plan) {
         return res.status(404).json({ error: "Plan not found" });
       }
@@ -408,7 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/plans/:id", requireSuperAdmin, async (req, res) => {
     try {
       const success = await storage.deletePlan(req.params.id);
-      
+
       if (!success) {
         return res.status(404).json({ error: "Plan not found" });
       }
@@ -421,35 +463,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== MULTI-STEP REGISTRATION ====================
-  
+
   // Step 1: Start registration - Create session with basic company info
   app.post("/api/registration/start", async (req, res) => {
     try {
       const registrationData = registerCompanySchema.parse(req.body);
-      
+
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(registrationData.email);
       if (existingUser) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Email already registered",
-          duplicateField: "email"
+          duplicateField: "email",
         });
       }
 
-      const existingCompany = await storage.getCompanyByEmail(registrationData.email);
+      const existingCompany = await storage.getCompanyByEmail(
+        registrationData.email,
+      );
       if (existingCompany) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Company already registered with this email",
-          duplicateField: "email"
+          duplicateField: "email",
         });
       }
 
       // Check if phone already exists
-      const existingCompanyByPhone = await storage.getCompanyByPhone(registrationData.phone);
+      const existingCompanyByPhone = await storage.getCompanyByPhone(
+        registrationData.phone,
+      );
       if (existingCompanyByPhone) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           error: "Phone number already registered",
-          duplicateField: "phone"
+          duplicateField: "phone",
         });
       }
 
@@ -476,7 +522,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Start registration error:", error);
       if (error.name === "ZodError") {
-        return res.status(400).json({ error: "Invalid registration data", details: error.errors });
+        return res
+          .status(400)
+          .json({ error: "Invalid registration data", details: error.errors });
       }
       res.status(500).json({ error: "Internal server error" });
     }
@@ -486,10 +534,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/registration/:sessionId/select-plan", async (req, res) => {
     try {
       const { planId } = req.body;
-      const session = await storage.getRegistrationSession(req.params.sessionId);
-      
+      const session = await storage.getRegistrationSession(
+        req.params.sessionId,
+      );
+
       if (!session) {
-        return res.status(404).json({ error: "Registration session not found" });
+        return res
+          .status(404)
+          .json({ error: "Registration session not found" });
       }
 
       if (new Date() > session.expiresAt) {
@@ -498,13 +550,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const plan = await storage.getPlan(planId);
       if (!plan || !plan.isActive) {
-        return res.status(400).json({ error: "Invalid or inactive plan selected" });
+        return res
+          .status(400)
+          .json({ error: "Invalid or inactive plan selected" });
       }
 
-      const updatedSession = await storage.updateRegistrationSession(session.id, {
-        status: "plan_selection",
-        sessionData: { ...session.sessionData, planId },
-      });
+      const updatedSession = await storage.updateRegistrationSession(
+        session.id,
+        {
+          status: "plan_selection",
+          sessionData: { ...session.sessionData, planId },
+        },
+      );
 
       res.json({ success: true, session: updatedSession });
     } catch (error) {
@@ -517,10 +574,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/registration/:sessionId/add-employees", async (req, res) => {
     try {
       const { employees, employeeCount } = req.body;
-      const session = await storage.getRegistrationSession(req.params.sessionId);
-      
+      const session = await storage.getRegistrationSession(
+        req.params.sessionId,
+      );
+
       if (!session) {
-        return res.status(404).json({ error: "Registration session not found" });
+        return res
+          .status(404)
+          .json({ error: "Registration session not found" });
       }
 
       if (new Date() > session.expiresAt) {
@@ -537,14 +598,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Explicitly exclude password field for security
       }));
 
-      const updatedSession = await storage.updateRegistrationSession(session.id, {
-        status: "employees_setup",
-        sessionData: { 
-          ...session.sessionData, 
-          additionalEmployees: sanitizedEmployees,
-          employeeCount: employeeCount || sanitizedEmployees.length || 1,
+      const updatedSession = await storage.updateRegistrationSession(
+        session.id,
+        {
+          status: "employees_setup",
+          sessionData: {
+            ...session.sessionData,
+            additionalEmployees: sanitizedEmployees,
+            employeeCount: employeeCount || sanitizedEmployees.length || 1,
+          },
         },
-      });
+      );
 
       res.json({ success: true, session: updatedSession });
     } catch (error) {
@@ -557,10 +621,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/registration/:sessionId/pay-online", async (req, res) => {
     try {
       const { cardNumber, expiryMonth, expiryYear, cvv } = req.body;
-      const session = await storage.getRegistrationSession(req.params.sessionId);
-      
+      const session = await storage.getRegistrationSession(
+        req.params.sessionId,
+      );
+
       if (!session) {
-        return res.status(404).json({ error: "Registration session not found" });
+        return res
+          .status(404)
+          .json({ error: "Registration session not found" });
       }
 
       if (new Date() > session.expiresAt) {
@@ -582,33 +650,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyId = randomUUID();
       const userId = randomUUID();
 
-      const [company] = await db.insert(schema.companies).values({
-        id: companyId,
-        name: sessionData.companyName,
-        email: sessionData.email,
-        status: "pending",
-        plan: plan.name,
-        maxEmployees: plan.maxEmployees.toString(),
-        phone: sessionData.phone,
-        primaryColor: "#00C853",
-        secondaryColor: "#000000",
-      }).returning();
+      const [company] = await db
+        .insert(schema.companies)
+        .values({
+          id: companyId,
+          name: sessionData.companyName,
+          email: sessionData.email,
+          status: "pending",
+          plan: plan.name,
+          maxEmployees: plan.maxEmployees.toString(),
+          phone: sessionData.phone,
+          primaryColor: "#00C853",
+          secondaryColor: "#000000",
+        })
+        .returning();
 
       // Note: sessionData.password is already hashed during Step 1
-      const [user] = await db.insert(schema.users).values({
-        id: userId,
-        email: sessionData.email,
-        password: sessionData.password, // Already hashed
-        name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
-        role: "COMPANY_ADMIN",
-        companyId: companyId,
-        position: "Company Administrator",
-        status: "active",
-      }).returning();
+      const [user] = await db
+        .insert(schema.users)
+        .values({
+          id: userId,
+          email: sessionData.email,
+          password: sessionData.password, // Already hashed
+          name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
+          role: "COMPANY_ADMIN",
+          companyId: companyId,
+          position: "Company Administrator",
+          status: "active",
+        })
+        .returning();
 
       // Create additional employees if any
       // Note: Employee passwords are always server-generated (never sent from client)
-      if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+      if (
+        sessionData.additionalEmployees &&
+        sessionData.additionalEmployees.length > 0
+      ) {
         const defaultPasswordHash = await hashPassword("changeme123");
         for (const emp of sessionData.additionalEmployees) {
           await db.insert(schema.users).values({
@@ -644,10 +721,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionData: { ...sessionData, orderId: order.id },
       });
 
-      const token = createSession(user.id, user.email, user.role, user.companyId);
+      const token = createSession(
+        user.id,
+        user.email,
+        user.role,
+        user.companyId,
+      );
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         orderId: order.id,
         token,
         user: {
@@ -661,7 +743,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: company.id,
           name: company.name,
           status: company.status,
-        }
+        },
       });
     } catch (error) {
       console.error("Pay online error:", error);
@@ -673,10 +755,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/registration/:sessionId/pay-offline", async (req, res) => {
     try {
       const { notes } = req.body;
-      const session = await storage.getRegistrationSession(req.params.sessionId);
-      
+      const session = await storage.getRegistrationSession(
+        req.params.sessionId,
+      );
+
       if (!session) {
-        return res.status(404).json({ error: "Registration session not found" });
+        return res
+          .status(404)
+          .json({ error: "Registration session not found" });
       }
 
       if (new Date() > session.expiresAt) {
@@ -693,33 +779,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const companyId = randomUUID();
       const userId = randomUUID();
 
-      const [company] = await db.insert(schema.companies).values({
-        id: companyId,
-        name: sessionData.companyName,
-        email: sessionData.email,
-        status: "pending",
-        plan: plan.name,
-        maxEmployees: plan.maxEmployees.toString(),
-        phone: sessionData.phone,
-        primaryColor: "#00C853",
-        secondaryColor: "#000000",
-      }).returning();
+      const [company] = await db
+        .insert(schema.companies)
+        .values({
+          id: companyId,
+          name: sessionData.companyName,
+          email: sessionData.email,
+          status: "pending",
+          plan: plan.name,
+          maxEmployees: plan.maxEmployees.toString(),
+          phone: sessionData.phone,
+          primaryColor: "#00C853",
+          secondaryColor: "#000000",
+        })
+        .returning();
 
       // Note: sessionData.password is already hashed during Step 1
-      const [user] = await db.insert(schema.users).values({
-        id: userId,
-        email: sessionData.email,
-        password: sessionData.password, // Already hashed
-        name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
-        role: "COMPANY_ADMIN",
-        companyId: companyId,
-        position: "Company Administrator",
-        status: "active",
-      }).returning();
+      const [user] = await db
+        .insert(schema.users)
+        .values({
+          id: userId,
+          email: sessionData.email,
+          password: sessionData.password, // Already hashed
+          name: `${sessionData.adminFirstName} ${sessionData.adminLastName}`,
+          role: "COMPANY_ADMIN",
+          companyId: companyId,
+          position: "Company Administrator",
+          status: "active",
+        })
+        .returning();
 
       // Create additional employees if any
       // Note: Employee passwords are always server-generated (never sent from client)
-      if (sessionData.additionalEmployees && sessionData.additionalEmployees.length > 0) {
+      if (
+        sessionData.additionalEmployees &&
+        sessionData.additionalEmployees.length > 0
+      ) {
         const defaultPasswordHash = await hashPassword("changeme123");
         for (const emp of sessionData.additionalEmployees) {
           await db.insert(schema.users).values({
@@ -753,10 +848,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionData: { ...sessionData, offlineRequestId: offlineRequest.id },
       });
 
-      const token = createSession(user.id, user.email, user.role, user.companyId);
+      const token = createSession(
+        user.id,
+        user.email,
+        user.role,
+        user.companyId,
+      );
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         offlineRequestId: offlineRequest.id,
         token,
         user: {
@@ -770,7 +870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: company.id,
           name: company.name,
           status: company.status,
-        }
+        },
       });
     } catch (error) {
       console.error("Pay offline error:", error);
@@ -833,98 +933,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approve offline payment request
-  app.post("/api/offline-requests/:id/approve", requireSuperAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
+  app.post(
+    "/api/offline-requests/:id/approve",
+    requireSuperAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const request = await storage.getOfflinePaymentRequest(req.params.id);
+        if (!request) {
+          return res.status(404).json({ error: "Offline request not found" });
+        }
+
+        // Update request status
+        await storage.updateOfflinePaymentRequest(request.id, {
+          status: "approved",
+          approvedBy: session.userId,
+          approvedAt: new Date(),
+        });
+
+        // Activate company
+        await storage.updateCompany(request.companyId, { status: "active" });
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Approve offline request error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      const request = await storage.getOfflinePaymentRequest(req.params.id);
-      if (!request) {
-        return res.status(404).json({ error: "Offline request not found" });
-      }
-
-      // Update request status
-      await storage.updateOfflinePaymentRequest(request.id, {
-        status: "approved",
-        approvedBy: session.userId,
-        approvedAt: new Date(),
-      });
-
-      // Activate company
-      await storage.updateCompany(request.companyId, { status: "active" });
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Approve offline request error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    },
+  );
 
   // Reject offline payment request
-  app.post("/api/offline-requests/:id/reject", requireSuperAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
+  app.post(
+    "/api/offline-requests/:id/reject",
+    requireSuperAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const { reason } = req.body;
+        const request = await storage.getOfflinePaymentRequest(req.params.id);
+        if (!request) {
+          return res.status(404).json({ error: "Offline request not found" });
+        }
+
+        // Update request status
+        await storage.updateOfflinePaymentRequest(request.id, {
+          status: "rejected",
+          approvedBy: session.userId,
+          approvedAt: new Date(),
+          rejectionReason: reason || "No reason provided",
+        });
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Reject offline request error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
+    },
+  );
 
-      const { reason } = req.body;
-      const request = await storage.getOfflinePaymentRequest(req.params.id);
-      if (!request) {
-        return res.status(404).json({ error: "Offline request not found" });
+  app.patch(
+    "/api/companies/:id/settings",
+    requireCompanyAdmin,
+    enforceCompanyScope,
+    async (req, res) => {
+      try {
+        const settingsData = updateCompanySettingsSchema.parse(req.body);
+
+        const company = await storage.updateCompany(
+          req.params.id,
+          settingsData,
+        );
+
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+
+        res.json(company);
+      } catch (error) {
+        console.error("Update company settings error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
+    },
+  );
 
-      // Update request status
-      await storage.updateOfflinePaymentRequest(request.id, {
-        status: "rejected",
-        approvedBy: session.userId,
-        approvedAt: new Date(),
-        rejectionReason: reason || "No reason provided",
-      });
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Reject offline request error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.patch("/api/companies/:id/settings", requireCompanyAdmin, enforceCompanyScope, async (req, res) => {
-    try {
-      const settingsData = updateCompanySettingsSchema.parse(req.body);
-      
-      const company = await storage.updateCompany(req.params.id, settingsData);
-
-      if (!company) {
-        return res.status(404).json({ error: "Company not found" });
+  app.get(
+    "/api/companies/:id/users",
+    requireCompanyAdmin,
+    enforceCompanyScope,
+    async (req, res) => {
+      try {
+        const users = await storage.getUsersByCompany(req.params.id);
+        res.json(
+          users.map((u) => ({
+            id: u.id,
+            email: u.email,
+            name: u.name,
+            role: u.role,
+            department: u.department,
+            position: u.position,
+            status: u.status,
+          })),
+        );
+      } catch (error) {
+        console.error("Get company users error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      res.json(company);
-    } catch (error) {
-      console.error("Update company settings error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.get("/api/companies/:id/users", requireCompanyAdmin, enforceCompanyScope, async (req, res) => {
-    try {
-      const users = await storage.getUsersByCompany(req.params.id);
-      res.json(users.map(u => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-        department: u.department,
-        position: u.position,
-        status: u.status,
-      })));
-    } catch (error) {
-      console.error("Get company users error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    },
+  );
 
   app.post("/api/users", requireCompanyAdmin, async (req, res) => {
     try {
@@ -934,16 +1057,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Only super admins can create SUPER_ADMIN or COMPANY_ADMIN users
-      if (userData.role === UserRole.SUPER_ADMIN || userData.role === UserRole.COMPANY_ADMIN) {
+      if (
+        userData.role === UserRole.SUPER_ADMIN ||
+        userData.role === UserRole.COMPANY_ADMIN
+      ) {
         if (session.role !== UserRole.SUPER_ADMIN) {
-          return res.status(403).json({ 
-            error: "Only super admins can create admin users" 
+          return res.status(403).json({
+            error: "Only super admins can create admin users",
           });
         }
       }
-      
+
       // Company admins can only create users in their own company
       if (session.role === UserRole.COMPANY_ADMIN) {
         userData.companyId = session.companyId;
@@ -983,13 +1109,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Super admin can see all departments across all companies
         const allCompanies = await storage.getAllCompanies();
         const allDepartments = await Promise.all(
-          allCompanies.map(company => storage.getDepartmentsByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getDepartmentsByCompany(company.id),
+          ),
         );
         departments = allDepartments.flat();
       } else {
         // Regular users see only their company's departments
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         departments = await storage.getDepartmentsByCompany(session.companyId);
       }
@@ -1009,11 +1139,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const departmentData = insertDepartmentSchema.parse(req.body);
-      
+
       // Set companyId from session if not super admin
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         departmentData.companyId = session.companyId;
       }
@@ -1039,13 +1171,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify ownership (unless super admin)
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const department = await storage.updateDepartment(req.params.id, updates);
-      
+
       if (!department) {
         return res.status(404).json({ error: "Department not found" });
       }
@@ -1070,7 +1205,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify ownership (unless super admin)
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1098,14 +1236,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allDesignations = await Promise.all(
-          allCompanies.map(company => storage.getDesignationsByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getDesignationsByCompany(company.id),
+          ),
         );
         designations = allDesignations.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
-        designations = await storage.getDesignationsByCompany(session.companyId);
+        designations = await storage.getDesignationsByCompany(
+          session.companyId,
+        );
       }
 
       res.json(designations);
@@ -1123,10 +1267,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const designationData = insertDesignationSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         designationData.companyId = session.companyId;
       }
@@ -1151,13 +1297,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Designation not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
-      const designation = await storage.updateDesignation(req.params.id, updates);
-      
+      const designation = await storage.updateDesignation(
+        req.params.id,
+        updates,
+      );
+
       if (!designation) {
         return res.status(404).json({ error: "Designation not found" });
       }
@@ -1181,7 +1333,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Designation not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1209,12 +1364,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allRolesLevels = await Promise.all(
-          allCompanies.map(company => storage.getRoleLevelsByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getRoleLevelsByCompany(company.id),
+          ),
         );
         rolesLevels = allRolesLevels.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         rolesLevels = await storage.getRoleLevelsByCompany(session.companyId);
       }
@@ -1234,10 +1393,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const roleLevelData = insertRoleLevelSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         roleLevelData.companyId = session.companyId;
       }
@@ -1262,13 +1423,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Role-level not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const roleLevel = await storage.updateRoleLevel(req.params.id, updates);
-      
+
       if (!roleLevel) {
         return res.status(404).json({ error: "Role-level not found" });
       }
@@ -1292,7 +1456,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Role-level not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1320,12 +1487,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allComponents = await Promise.all(
-          allCompanies.map(company => storage.getCtcComponentsByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getCtcComponentsByCompany(company.id),
+          ),
         );
         components = allComponents.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         components = await storage.getCtcComponentsByCompany(session.companyId);
       }
@@ -1345,10 +1516,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const componentData = insertCtcComponentSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         componentData.companyId = session.companyId;
       }
@@ -1373,13 +1546,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "CTC component not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
-      const component = await storage.updateCtcComponent(req.params.id, updates);
-      
+      const component = await storage.updateCtcComponent(
+        req.params.id,
+        updates,
+      );
+
       if (!component) {
         return res.status(404).json({ error: "CTC component not found" });
       }
@@ -1391,33 +1570,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/ctc-components/:id", requireCompanyAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
+  app.delete(
+    "/api/ctc-components/:id",
+    requireCompanyAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
 
-      const existing = await storage.getCtcComponent(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "CTC component not found" });
-      }
+        const existing = await storage.getCtcComponent(req.params.id);
+        if (!existing) {
+          return res.status(404).json({ error: "CTC component not found" });
+        }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+        if (
+          session.role !== UserRole.SUPER_ADMIN &&
+          existing.companyId !== session.companyId
+        ) {
+          return res.status(403).json({ error: "Access denied" });
+        }
 
-      const success = await storage.deleteCtcComponent(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "CTC component not found" });
-      }
+        const success = await storage.deleteCtcComponent(req.params.id);
+        if (!success) {
+          return res.status(404).json({ error: "CTC component not found" });
+        }
 
-      res.status(204).send();
-    } catch (error) {
-      console.error("Delete CTC component error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+        res.status(204).send();
+      } catch (error) {
+        console.error("Delete CTC component error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
 
   // ==================== PAYROLL ====================
   app.get("/api/payroll", requireAuth, async (req, res) => {
@@ -1428,32 +1614,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!session.companyId) {
-        return res.status(400).json({ error: "User not associated with a company" });
+        return res
+          .status(400)
+          .json({ error: "User not associated with a company" });
       }
 
       if (session.role === UserRole.EMPLOYEE) {
         // For employees, only return their own published payslips
-        const employees = await storage.getEmployeesByCompany(session.companyId);
-        const employee = employees.find(emp => emp.email === session.email);
-        
+        const employees = await storage.getEmployeesByCompany(
+          session.companyId,
+        );
+        const employee = employees.find((emp) => emp.email === session.email);
+
         if (!employee) {
           return res.json([]); // No employee record yet
         }
-        
-        const allPayrolls = await storage.getPayrollRecordsByCompany(session.companyId);
-        const employeePayrolls = allPayrolls.filter(p => 
-          p.employeeId === employee.id && p.payslipPublished === true
+
+        const allPayrolls = await storage.getPayrollRecordsByCompany(
+          session.companyId,
+        );
+        const employeePayrolls = allPayrolls.filter(
+          (p) => p.employeeId === employee.id && p.payslipPublished === true,
         );
         return res.json(employeePayrolls);
       }
 
       // Only company admin and super admin can see all payroll records
-      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+      if (
+        session.role !== UserRole.COMPANY_ADMIN &&
+        session.role !== UserRole.SUPER_ADMIN
+      ) {
         return res.status(403).json({ error: "Admin access required" });
       }
 
       // Company admin and super admin get all records
-      const payrollRecords = await storage.getPayrollRecordsByCompany(session.companyId);
+      const payrollRecords = await storage.getPayrollRecordsByCompany(
+        session.companyId,
+      );
       res.json(payrollRecords);
     } catch (error) {
       console.error("Get payroll records error:", error);
@@ -1469,7 +1666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!session.companyId) {
-        return res.status(400).json({ error: "User not associated with a company" });
+        return res
+          .status(400)
+          .json({ error: "User not associated with a company" });
       }
 
       const { month, year, employeeIds } = req.body;
@@ -1478,7 +1677,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Month and year are required" });
       }
 
-      if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+      if (
+        !employeeIds ||
+        !Array.isArray(employeeIds) ||
+        employeeIds.length === 0
+      ) {
         return res.status(400).json({ error: "Employee IDs are required" });
       }
 
@@ -1490,7 +1693,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           continue;
         }
 
-        const existing = await storage.getPayrollRecordByEmployeeAndPeriod(employeeId, month, year);
+        const existing = await storage.getPayrollRecordByEmployeeAndPeriod(
+          employeeId,
+          month,
+          year,
+        );
         if (existing) {
           continue;
         }
@@ -1498,15 +1705,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0);
 
-        const attendanceRecords = await storage.getAttendanceRecordsByEmployee(employeeId);
-        const monthAttendance = attendanceRecords.filter(record => {
+        const attendanceRecords =
+          await storage.getAttendanceRecordsByEmployee(employeeId);
+        const monthAttendance = attendanceRecords.filter((record) => {
           if (!record.date) return false;
           const recordDate = new Date(record.date);
           return recordDate >= startDate && recordDate <= endDate;
         });
 
         const workingDays = endDate.getDate();
-        const presentDays = monthAttendance.filter(r => r.status === "present" || r.status === "approved").length;
+        const presentDays = monthAttendance.filter(
+          (r) => r.status === "present" || r.status === "approved",
+        ).length;
         const absentDays = workingDays - presentDays;
 
         let grossPay = 0;
@@ -1554,9 +1764,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         generatedPayrolls.push(payrollRecord);
       }
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: `Generated ${generatedPayrolls.length} payroll records`,
-        payrolls: generatedPayrolls
+        payrolls: generatedPayrolls,
       });
     } catch (error) {
       console.error("Generate payroll error:", error);
@@ -1576,7 +1786,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1599,7 +1812,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1632,7 +1848,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1665,12 +1884,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       if (payroll.status !== "approved") {
-        return res.status(400).json({ error: "Only approved payroll can be published" });
+        return res
+          .status(400)
+          .json({ error: "Only approved payroll can be published" });
       }
 
       const updated = await storage.updatePayrollRecord(req.params.id, {
@@ -1697,7 +1921,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1721,12 +1948,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Payroll record not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && payroll.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        payroll.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       if (payroll.status === "approved" || payroll.payslipPublished) {
-        return res.status(400).json({ error: "Cannot delete approved or published payroll" });
+        return res
+          .status(400)
+          .json({ error: "Cannot delete approved or published payroll" });
       }
 
       const success = await storage.deletePayrollRecord(req.params.id);
@@ -1753,12 +1985,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allEmployees = await Promise.all(
-          allCompanies.map(company => storage.getEmployeesByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getEmployeesByCompany(company.id),
+          ),
         );
         employees = allEmployees.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         employees = await storage.getEmployeesByCompany(session.companyId);
       }
@@ -1778,10 +2014,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const employeeData = insertEmployeeSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         employeeData.companyId = session.companyId;
       }
@@ -1806,13 +2044,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Employee not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const employee = await storage.updateEmployee(req.params.id, updates);
-      
+
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
@@ -1836,7 +2077,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Employee not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -1864,29 +2108,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allRecords = await Promise.all(
-          allCompanies.map(company => storage.getAttendanceRecordsByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getAttendanceRecordsByCompany(company.id),
+          ),
         );
         records = allRecords.flat();
       } else if (session.role === UserRole.EMPLOYEE) {
         // For employees, only return their own attendance records
         // Find employee by email (users and employees linked by email)
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
-        const employees = await storage.getEmployeesByCompany(session.companyId);
-        const employee = employees.find(emp => emp.email === session.email);
-        
+        const employees = await storage.getEmployeesByCompany(
+          session.companyId,
+        );
+        const employee = employees.find((emp) => emp.email === session.email);
+
         if (!employee) {
           return res.json([]); // No employee record yet
         }
-        
+
         records = await storage.getAttendanceRecordsByEmployee(employee.id);
       } else {
         // Company admin gets all company records
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
-        records = await storage.getAttendanceRecordsByCompany(session.companyId);
+        records = await storage.getAttendanceRecordsByCompany(
+          session.companyId,
+        );
       }
 
       res.json(records);
@@ -1896,30 +2150,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/attendance-records/employee/:employeeId", requireAuth, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
+  app.get(
+    "/api/attendance-records/employee/:employeeId",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
 
-      // Verify employee belongs to user's company (unless super admin)
-      const employee = await storage.getEmployee(req.params.employeeId);
-      if (!employee) {
-        return res.status(404).json({ error: "Employee not found" });
-      }
+        // Verify employee belongs to user's company (unless super admin)
+        const employee = await storage.getEmployee(req.params.employeeId);
+        if (!employee) {
+          return res.status(404).json({ error: "Employee not found" });
+        }
 
-      if (session.role !== UserRole.SUPER_ADMIN && employee.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+        if (
+          session.role !== UserRole.SUPER_ADMIN &&
+          employee.companyId !== session.companyId
+        ) {
+          return res.status(403).json({ error: "Access denied" });
+        }
 
-      const records = await storage.getAttendanceRecordsByEmployee(req.params.employeeId);
-      res.json(records);
-    } catch (error) {
-      console.error("Get employee attendance records error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+        const records = await storage.getAttendanceRecordsByEmployee(
+          req.params.employeeId,
+        );
+        res.json(records);
+      } catch (error) {
+        console.error("Get employee attendance records error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
 
   app.post("/api/attendance-records", requireAuth, async (req, res) => {
     try {
@@ -1929,10 +2192,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const recordData = insertAttendanceRecordSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         recordData.companyId = session.companyId;
       }
@@ -1945,63 +2210,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/attendance-records/:id", requireCompanyAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
+  app.put(
+    "/api/attendance-records/:id",
+    requireCompanyAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const existing = await storage.getAttendanceRecord(req.params.id);
+        if (!existing) {
+          return res.status(404).json({ error: "Attendance record not found" });
+        }
+
+        if (
+          session.role !== UserRole.SUPER_ADMIN &&
+          existing.companyId !== session.companyId
+        ) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+
+        const updates = req.body;
+        const record = await storage.updateAttendanceRecord(
+          req.params.id,
+          updates,
+        );
+
+        if (!record) {
+          return res.status(404).json({ error: "Attendance record not found" });
+        }
+
+        res.json(record);
+      } catch (error) {
+        console.error("Update attendance record error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
+    },
+  );
 
-      const existing = await storage.getAttendanceRecord(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Attendance record not found" });
+  app.delete(
+    "/api/attendance-records/:id",
+    requireCompanyAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const existing = await storage.getAttendanceRecord(req.params.id);
+        if (!existing) {
+          return res.status(404).json({ error: "Attendance record not found" });
+        }
+
+        if (
+          session.role !== UserRole.SUPER_ADMIN &&
+          existing.companyId !== session.companyId
+        ) {
+          return res.status(403).json({ error: "Access denied" });
+        }
+
+        const success = await storage.deleteAttendanceRecord(req.params.id);
+        if (!success) {
+          return res.status(404).json({ error: "Attendance record not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Delete attendance record error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      const updates = req.body;
-      const record = await storage.updateAttendanceRecord(req.params.id, updates);
-      
-      if (!record) {
-        return res.status(404).json({ error: "Attendance record not found" });
-      }
-
-      res.json(record);
-    } catch (error) {
-      console.error("Update attendance record error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/attendance-records/:id", requireCompanyAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
-
-      const existing = await storage.getAttendanceRecord(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Attendance record not found" });
-      }
-
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
-
-      const success = await storage.deleteAttendanceRecord(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "Attendance record not found" });
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Delete attendance record error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    },
+  );
 
   // ==================== SHIFTS ====================
   app.get("/api/shifts", requireAuth, async (req, res) => {
@@ -2015,12 +2297,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allShifts = await Promise.all(
-          allCompanies.map(company => storage.getShiftsByCompany(company.id))
+          allCompanies.map((company) => storage.getShiftsByCompany(company.id)),
         );
         shifts = allShifts.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         shifts = await storage.getShiftsByCompany(session.companyId);
       }
@@ -2040,10 +2324,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const shiftData = insertShiftSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         shiftData.companyId = session.companyId;
       }
@@ -2068,13 +2354,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Shift not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const shift = await storage.updateShift(req.params.id, updates);
-      
+
       if (!shift) {
         return res.status(404).json({ error: "Shift not found" });
       }
@@ -2098,7 +2387,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Shift not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -2126,12 +2418,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allHolidays = await Promise.all(
-          allCompanies.map(company => storage.getHolidaysByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getHolidaysByCompany(company.id),
+          ),
         );
         holidays = allHolidays.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         holidays = await storage.getHolidaysByCompany(session.companyId);
       }
@@ -2151,10 +2447,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const holidayData = insertHolidaySchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         holidayData.companyId = session.companyId;
       }
@@ -2179,13 +2477,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Holiday not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const holiday = await storage.updateHoliday(req.params.id, updates);
-      
+
       if (!holiday) {
         return res.status(404).json({ error: "Holiday not found" });
       }
@@ -2209,7 +2510,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Holiday not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -2237,12 +2541,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allLeaveTypes = await Promise.all(
-          allCompanies.map(company => storage.getLeaveTypesByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getLeaveTypesByCompany(company.id),
+          ),
         );
         leaveTypes = allLeaveTypes.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         leaveTypes = await storage.getLeaveTypesByCompany(session.companyId);
       }
@@ -2262,10 +2570,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const leaveTypeData = insertLeaveTypeSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         leaveTypeData.companyId = session.companyId;
       }
@@ -2290,13 +2600,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Leave type not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
       const leaveType = await storage.updateLeaveType(req.params.id, updates);
-      
+
       if (!leaveType) {
         return res.status(404).json({ error: "Leave type not found" });
       }
@@ -2320,7 +2633,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Leave type not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
@@ -2348,14 +2664,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (session.role === UserRole.SUPER_ADMIN) {
         const allCompanies = await storage.getAllCompanies();
         const allExpenseTypes = await Promise.all(
-          allCompanies.map(company => storage.getExpenseTypesByCompany(company.id))
+          allCompanies.map((company) =>
+            storage.getExpenseTypesByCompany(company.id),
+          ),
         );
         expenseTypes = allExpenseTypes.flat();
       } else {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
-        expenseTypes = await storage.getExpenseTypesByCompany(session.companyId);
+        expenseTypes = await storage.getExpenseTypesByCompany(
+          session.companyId,
+        );
       }
 
       res.json(expenseTypes);
@@ -2373,10 +2695,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const expenseTypeData = insertExpenseTypeSchema.parse(req.body);
-      
+
       if (session.role !== UserRole.SUPER_ADMIN) {
         if (!session.companyId) {
-          return res.status(400).json({ error: "User not associated with a company" });
+          return res
+            .status(400)
+            .json({ error: "User not associated with a company" });
         }
         expenseTypeData.companyId = session.companyId;
       }
@@ -2401,13 +2725,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Expense type not found" });
       }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
+      if (
+        session.role !== UserRole.SUPER_ADMIN &&
+        existing.companyId !== session.companyId
+      ) {
         return res.status(403).json({ error: "Access denied" });
       }
 
       const updates = req.body;
-      const expenseType = await storage.updateExpenseType(req.params.id, updates);
-      
+      const expenseType = await storage.updateExpenseType(
+        req.params.id,
+        updates,
+      );
+
       if (!expenseType) {
         return res.status(404).json({ error: "Expense type not found" });
       }
@@ -2419,33 +2749,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/expense-types/:id", requireCompanyAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
+  app.delete(
+    "/api/expense-types/:id",
+    requireCompanyAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
 
-      const existing = await storage.getExpenseType(req.params.id);
-      if (!existing) {
-        return res.status(404).json({ error: "Expense type not found" });
-      }
+        const existing = await storage.getExpenseType(req.params.id);
+        if (!existing) {
+          return res.status(404).json({ error: "Expense type not found" });
+        }
 
-      if (session.role !== UserRole.SUPER_ADMIN && existing.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Access denied" });
-      }
+        if (
+          session.role !== UserRole.SUPER_ADMIN &&
+          existing.companyId !== session.companyId
+        ) {
+          return res.status(403).json({ error: "Access denied" });
+        }
 
-      const success = await storage.deleteExpenseType(req.params.id);
-      if (!success) {
-        return res.status(404).json({ error: "Expense type not found" });
-      }
+        const success = await storage.deleteExpenseType(req.params.id);
+        if (!success) {
+          return res.status(404).json({ error: "Expense type not found" });
+        }
 
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Delete expense type error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Delete expense type error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
 
   // ==================== EXPENSE CLAIMS ====================
   app.get("/api/expense-claims", requireAuth, async (req, res) => {
@@ -2456,49 +2793,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { employeeId, status, view } = req.query;
-      
+
       let claims: ExpenseClaim[] = [];
-      
+
       // Determine which claims to fetch based on user role and view parameter
       if (view === "manager") {
         // Manager view: Get claims of employees reporting to this user
         const user = await storage.getUser(session.userId);
         if (!user || !user.employeeId) {
-          return res.status(400).json({ error: "User has no associated employee record" });
+          return res
+            .status(400)
+            .json({ error: "User has no associated employee record" });
         }
         claims = await storage.getExpenseClaimsByManager(user.employeeId);
       } else if (view === "employee" || employeeId) {
         // Employee view: Get own claims only
         const user = await storage.getUser(session.userId);
         if (!user || !user.employeeId) {
-          return res.status(400).json({ error: "User has no associated employee record" });
+          return res
+            .status(400)
+            .json({ error: "User has no associated employee record" });
         }
-        
+
         // Security: Only allow viewing own claims unless company admin
         const targetEmployeeId = employeeId as string;
-        if (targetEmployeeId && targetEmployeeId !== user.employeeId && session.role !== "COMPANY_ADMIN") {
-          return res.status(403).json({ error: "Not authorized to view other employees' claims" });
+        if (
+          targetEmployeeId &&
+          targetEmployeeId !== user.employeeId &&
+          session.role !== "COMPANY_ADMIN"
+        ) {
+          return res
+            .status(403)
+            .json({ error: "Not authorized to view other employees' claims" });
         }
-        
-        claims = await storage.getExpenseClaimsByEmployee(targetEmployeeId || user.employeeId);
-      } else if (session.role === "COMPANY_ADMIN" || session.role === "SUPER_ADMIN") {
+
+        claims = await storage.getExpenseClaimsByEmployee(
+          targetEmployeeId || user.employeeId,
+        );
+      } else if (
+        session.role === "COMPANY_ADMIN" ||
+        session.role === "SUPER_ADMIN"
+      ) {
         // Admin view: Get all company claims
         claims = await storage.getExpenseClaimsByCompany(session.companyId);
       } else {
         // Default to own claims for regular employees
         const user = await storage.getUser(session.userId);
         if (!user || !user.employeeId) {
-          return res.status(400).json({ error: "User has no associated employee record" });
+          return res
+            .status(400)
+            .json({ error: "User has no associated employee record" });
         }
         claims = await storage.getExpenseClaimsByEmployee(user.employeeId);
       }
 
       // Security: Filter by company ID to prevent cross-company access
-      claims = claims.filter(claim => claim.companyId === session.companyId);
+      claims = claims.filter((claim) => claim.companyId === session.companyId);
 
       // Filter by status if provided
       if (status) {
-        claims = claims.filter(claim => claim.status === status);
+        claims = claims.filter((claim) => claim.status === status);
       }
 
       res.json(claims);
@@ -2522,25 +2876,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to access this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to access this claim" });
       }
 
       // Security: Verify access rights (own claim, team member claim for manager, or admin)
       const user = await storage.getUser(session.userId);
       if (session.role !== "COMPANY_ADMIN" && session.role !== "SUPER_ADMIN") {
         if (!user || !user.employeeId) {
-          return res.status(403).json({ error: "Not authorized to access this claim" });
+          return res
+            .status(403)
+            .json({ error: "Not authorized to access this claim" });
         }
-        
+
         // Check if it's own claim
         const isOwnClaim = claim.employeeId === user.employeeId;
-        
+
         // Check if employee reports to this manager
         const employee = await storage.getEmployee(claim.employeeId);
-        const isManagerOfEmployee = employee?.reportingManagerId === user.employeeId;
-        
+        const isManagerOfEmployee =
+          employee?.reportingManagerId === user.employeeId;
+
         if (!isOwnClaim && !isManagerOfEmployee) {
-          return res.status(403).json({ error: "Not authorized to access this claim" });
+          return res
+            .status(403)
+            .json({ error: "Not authorized to access this claim" });
         }
       }
 
@@ -2560,13 +2921,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUser(session.userId);
       if (!user || !user.employeeId) {
-        return res.status(400).json({ error: "User has no associated employee record" });
+        return res
+          .status(400)
+          .json({ error: "User has no associated employee record" });
       }
 
       // Validate request body using Zod schema
       const validation = insertExpenseClaimSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ error: "Invalid request data", details: validation.error.errors });
+        return res
+          .status(400)
+          .json({
+            error: "Invalid request data",
+            details: validation.error.errors,
+          });
       }
 
       // Create claim with security-enforced fields
@@ -2578,8 +2946,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Security: Regular employees can only create claims for themselves
-      if (session.role !== "COMPANY_ADMIN" && claimData.employeeId !== user.employeeId) {
-        return res.status(403).json({ error: "Not authorized to create claims for other employees" });
+      if (
+        session.role !== "COMPANY_ADMIN" &&
+        claimData.employeeId !== user.employeeId
+      ) {
+        return res
+          .status(403)
+          .json({
+            error: "Not authorized to create claims for other employees",
+          });
       }
 
       const claim = await storage.createExpenseClaim(claimData);
@@ -2604,16 +2979,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to update this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this claim" });
       }
 
       // Security: Only claim owner or company admin can update
       const user = await storage.getUser(session.userId);
       const isOwner = user?.employeeId === claim.employeeId;
-      const isAdmin = session.role === "COMPANY_ADMIN" || session.role === "SUPER_ADMIN";
-      
+      const isAdmin =
+        session.role === "COMPANY_ADMIN" || session.role === "SUPER_ADMIN";
+
       if (!isOwner && !isAdmin) {
-        return res.status(403).json({ error: "Not authorized to update this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to update this claim" });
       }
 
       // Employees can only update draft claims
@@ -2624,11 +3004,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body using whitelist schema to prevent mass assignment
       const validation = updateExpenseClaimSchema.safeParse(req.body);
       if (!validation.success) {
-        return res.status(400).json({ error: "Invalid request data", details: validation.error.errors });
+        return res
+          .status(400)
+          .json({
+            error: "Invalid request data",
+            details: validation.error.errors,
+          });
       }
 
       // Only allow updating safe fields - prevents tampering with status, employeeId, companyId, audit fields
-      const updated = await storage.updateExpenseClaim(req.params.id, validation.data);
+      const updated = await storage.updateExpenseClaim(
+        req.params.id,
+        validation.data,
+      );
       if (!updated) {
         return res.status(404).json({ error: "Expense claim not found" });
       }
@@ -2653,13 +3041,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to delete this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this claim" });
       }
 
       // Security: Only claim owner can delete
       const user = await storage.getUser(session.userId);
       if (!user || !user.employeeId || user.employeeId !== claim.employeeId) {
-        return res.status(403).json({ error: "Not authorized to delete this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to delete this claim" });
       }
 
       // Can only delete draft claims
@@ -2692,13 +3084,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to submit this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to submit this claim" });
       }
 
       // Security: Only claim owner can submit
       const user = await storage.getUser(session.userId);
       if (!user || !user.employeeId || user.employeeId !== claim.employeeId) {
-        return res.status(403).json({ error: "Not authorized to submit this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to submit this claim" });
       }
 
       // Status transition validation: Can only submit draft claims
@@ -2709,7 +3105,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify claim has at least one item
       const items = await storage.getExpenseClaimItemsByClaim(claim.id);
       if (items.length === 0) {
-        return res.status(400).json({ error: "Cannot submit empty claim. Add expense items first." });
+        return res
+          .status(400)
+          .json({
+            error: "Cannot submit empty claim. Add expense items first.",
+          });
       }
 
       const updated = await storage.updateExpenseClaim(req.params.id, {
@@ -2738,18 +3138,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to approve this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to approve this claim" });
       }
 
       // Status transition validation: Can only approve pending claims
       if (claim.status !== "pending_approval") {
-        return res.status(400).json({ error: "Can only approve claims that are pending approval" });
+        return res
+          .status(400)
+          .json({ error: "Can only approve claims that are pending approval" });
       }
 
       // Security: Only the employee's reporting manager can approve
       const user = await storage.getUser(session.userId);
       if (!user || !user.employeeId) {
-        return res.status(403).json({ error: "User has no associated employee record" });
+        return res
+          .status(403)
+          .json({ error: "User has no associated employee record" });
       }
 
       const employee = await storage.getEmployee(claim.employeeId);
@@ -2759,9 +3165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify that the current user is the employee's reporting manager
       if (employee.reportingManagerId !== user.employeeId) {
-        return res.status(403).json({ error: "Only the reporting manager can approve this claim" });
+        return res
+          .status(403)
+          .json({ error: "Only the reporting manager can approve this claim" });
       }
-      
+
       const updated = await storage.updateExpenseClaim(req.params.id, {
         status: "approved",
         managerReviewedBy: user.employeeId,
@@ -2790,18 +3198,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Security: Verify company scoping
       if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to reject this claim" });
+        return res
+          .status(403)
+          .json({ error: "Not authorized to reject this claim" });
       }
 
       // Status transition validation: Can only reject pending claims
       if (claim.status !== "pending_approval") {
-        return res.status(400).json({ error: "Can only reject claims that are pending approval" });
+        return res
+          .status(400)
+          .json({ error: "Can only reject claims that are pending approval" });
       }
 
       // Security: Only the employee's reporting manager can reject
       const user = await storage.getUser(session.userId);
       if (!user || !user.employeeId) {
-        return res.status(403).json({ error: "User has no associated employee record" });
+        return res
+          .status(403)
+          .json({ error: "User has no associated employee record" });
       }
 
       const employee = await storage.getEmployee(claim.employeeId);
@@ -2811,7 +3225,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify that the current user is the employee's reporting manager
       if (employee.reportingManagerId !== user.employeeId) {
-        return res.status(403).json({ error: "Only the reporting manager can reject this claim" });
+        return res
+          .status(403)
+          .json({ error: "Only the reporting manager can reject this claim" });
       }
 
       const updated = await storage.updateExpenseClaim(req.params.id, {
@@ -2828,75 +3244,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/expense-claims/:id/disburse", requireCompanyAdmin, async (req, res) => {
-    try {
-      const session = getSession(req);
-      if (!session || !session.companyId) {
-        return res.status(401).json({ error: "Authentication required" });
+  app.post(
+    "/api/expense-claims/:id/disburse",
+    requireCompanyAdmin,
+    async (req, res) => {
+      try {
+        const session = getSession(req);
+        if (!session || !session.companyId) {
+          return res.status(401).json({ error: "Authentication required" });
+        }
+
+        const claim = await storage.getExpenseClaim(req.params.id);
+        if (!claim) {
+          return res.status(404).json({ error: "Expense claim not found" });
+        }
+
+        // Security: Verify company scoping
+        if (claim.companyId !== session.companyId) {
+          return res
+            .status(403)
+            .json({ error: "Not authorized to disburse this claim" });
+        }
+
+        // Status transition validation: Can only disburse approved claims
+        if (claim.status !== "approved") {
+          return res
+            .status(400)
+            .json({ error: "Only approved claims can be disbursed" });
+        }
+
+        const updated = await storage.updateExpenseClaim(req.params.id, {
+          status: "disbursed",
+          adminDisbursedBy: session.userId,
+          adminDisbursedAt: new Date(),
+        });
+
+        res.json(updated);
+      } catch (error) {
+        console.error("Disburse expense claim error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
-
-      const claim = await storage.getExpenseClaim(req.params.id);
-      if (!claim) {
-        return res.status(404).json({ error: "Expense claim not found" });
-      }
-
-      // Security: Verify company scoping
-      if (claim.companyId !== session.companyId) {
-        return res.status(403).json({ error: "Not authorized to disburse this claim" });
-      }
-
-      // Status transition validation: Can only disburse approved claims
-      if (claim.status !== "approved") {
-        return res.status(400).json({ error: "Only approved claims can be disbursed" });
-      }
-
-      const updated = await storage.updateExpenseClaim(req.params.id, {
-        status: "disbursed",
-        adminDisbursedBy: session.userId,
-        adminDisbursedAt: new Date(),
-      });
-
-      res.json(updated);
-    } catch (error) {
-      console.error("Disburse expense claim error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+    },
+  );
 
   // ==================== EXPENSE CLAIM ITEMS ====================
-  app.get("/api/expense-claims/:claimId/items", requireAuth, async (req, res) => {
-    try {
-      const items = await storage.getExpenseClaimItemsByClaim(req.params.claimId);
-      res.json(items);
-    } catch (error) {
-      console.error("Get expense claim items error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  app.post("/api/expense-claims/:claimId/items", requireAuth, async (req, res) => {
-    try {
-      const itemData = {
-        ...req.body,
-        claimId: req.params.claimId,
-      };
-
-      const item = await storage.createExpenseClaimItem(itemData);
-      
-      // Update total amount on claim
-      const claim = await storage.getExpenseClaim(req.params.claimId);
-      if (claim) {
-        const items = await storage.getExpenseClaimItemsByClaim(req.params.claimId);
-        const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
-        await storage.updateExpenseClaim(req.params.claimId, { totalAmount });
+  app.get(
+    "/api/expense-claims/:claimId/items",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const items = await storage.getExpenseClaimItemsByClaim(
+          req.params.claimId,
+        );
+        res.json(items);
+      } catch (error) {
+        console.error("Get expense claim items error:", error);
+        res.status(500).json({ error: "Internal server error" });
       }
+    },
+  );
 
-      res.status(201).json(item);
-    } catch (error) {
-      console.error("Create expense claim item error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+  app.post(
+    "/api/expense-claims/:claimId/items",
+    requireAuth,
+    async (req, res) => {
+      try {
+        const itemData = {
+          ...req.body,
+          claimId: req.params.claimId,
+        };
+
+        const item = await storage.createExpenseClaimItem(itemData);
+
+        // Update total amount on claim
+        const claim = await storage.getExpenseClaim(req.params.claimId);
+        if (claim) {
+          const items = await storage.getExpenseClaimItemsByClaim(
+            req.params.claimId,
+          );
+          const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+          await storage.updateExpenseClaim(req.params.claimId, { totalAmount });
+        }
+
+        res.status(201).json(item);
+      } catch (error) {
+        console.error("Create expense claim item error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
 
   app.patch("/api/expense-claim-items/:id", requireAuth, async (req, res) => {
     try {
@@ -2905,11 +3341,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Expense claim item not found" });
       }
 
-      const updated = await storage.updateExpenseClaimItem(req.params.id, req.body);
-      
+      const updated = await storage.updateExpenseClaimItem(
+        req.params.id,
+        req.body,
+      );
+
       // Update total amount on claim
       const items = await storage.getExpenseClaimItemsByClaim(item.claimId);
-      const totalAmount = items.reduce((sum, i) => sum + (i.id === req.params.id ? (req.body.amount || i.amount) : i.amount), 0);
+      const totalAmount = items.reduce(
+        (sum, i) =>
+          sum +
+          (i.id === req.params.id ? req.body.amount || i.amount : i.amount),
+        0,
+      );
       await storage.updateExpenseClaim(item.claimId, { totalAmount });
 
       res.json(updated);
@@ -2952,7 +3396,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let workflows;
-      if (session.role === UserRole.SUPER_ADMIN || session.role === UserRole.COMPANY_ADMIN) {
+      if (
+        session.role === UserRole.SUPER_ADMIN ||
+        session.role === UserRole.COMPANY_ADMIN
+      ) {
         // Admins can see all workflows in their company
         workflows = await storage.getWorkflowsByCompany(session.companyId!);
       } else {
@@ -2971,7 +3418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/workflows/:id", requireAuth, async (req, res) => {
     try {
       const workflow = await storage.getWorkflow(req.params.id);
-      
+
       if (!workflow) {
         return res.status(404).json({ error: "Workflow not found" });
       }
@@ -2996,12 +3443,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only Company Admin or managers can create workflows
-      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
-        return res.status(403).json({ error: "Only admins and managers can create workflows" });
+      if (
+        session.role !== UserRole.COMPANY_ADMIN &&
+        session.role !== UserRole.SUPER_ADMIN
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Only admins and managers can create workflows" });
       }
 
       const workflowData = insertWorkflowSchema.parse(req.body);
-      
+
       const workflow = await storage.createWorkflow({
         ...workflowData,
         companyId: session.companyId!,
@@ -3029,20 +3481,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // CRITICAL: Employees can only update their own workflows
       // Admins can update any workflow in their company
-      if (session.role === UserRole.EMPLOYEE && workflow.assignedTo !== session.userId) {
-        return res.status(403).json({ error: "You can only update your own workflows" });
+      if (
+        session.role === UserRole.EMPLOYEE &&
+        workflow.assignedTo !== session.userId
+      ) {
+        return res
+          .status(403)
+          .json({ error: "You can only update your own workflows" });
       }
 
       const updates = updateWorkflowSchema.parse(req.body);
-      
+
       // CRITICAL: Employees can only update progress and notes, not assignment or other fields
       if (session.role === UserRole.EMPLOYEE) {
         const allowedUpdates: Partial<typeof updates> = {};
-        if (updates.progress !== undefined) allowedUpdates.progress = updates.progress;
-        if (updates.status !== undefined) allowedUpdates.status = updates.status;
+        if (updates.progress !== undefined)
+          allowedUpdates.progress = updates.progress;
+        if (updates.status !== undefined)
+          allowedUpdates.status = updates.status;
         if (updates.notes !== undefined) allowedUpdates.notes = updates.notes;
-        
-        const updated = await storage.updateWorkflow(req.params.id, allowedUpdates);
+
+        const updated = await storage.updateWorkflow(
+          req.params.id,
+          allowedUpdates,
+        );
         return res.json(updated);
       }
 
@@ -3068,8 +3530,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Only creator or admin can delete
-      if (workflow.assignedBy !== session.userId && session.role !== UserRole.COMPANY_ADMIN) {
-        return res.status(403).json({ error: "Only workflow creator or admin can delete" });
+      if (
+        workflow.assignedBy !== session.userId &&
+        session.role !== UserRole.COMPANY_ADMIN
+      ) {
+        return res
+          .status(403)
+          .json({ error: "Only workflow creator or admin can delete" });
       }
 
       const success = await storage.deleteWorkflow(req.params.id);
