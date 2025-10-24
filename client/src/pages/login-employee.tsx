@@ -45,7 +45,7 @@ export default function EmployeeLogin() {
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error.message || "Invalid credentials 123 ",
         variant: "destructive",
       });
     } finally {

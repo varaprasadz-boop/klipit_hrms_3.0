@@ -1,3 +1,5 @@
+import 'dotenv/config';
+import { neon } from '@neondatabase/serverless';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -7,7 +9,7 @@ const app = express();
 
 // Allow requests from your frontend
 app.use(cors({
-  origin: 'https://hrmsworld.in',
+  origin: 'https://api.hrmsworld.in',
   methods: ['GET','POST','PUT','DELETE','OPTIONS'],
   credentials: true
 }));

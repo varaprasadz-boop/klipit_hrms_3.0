@@ -58,13 +58,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserByEmail(email);
 
       if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(401).json({ error: "Invalid credentials | User not found" });
       }
 
       // Verify password using bcrypt
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
-        return res.status(401).json({ error: "Invalid credentials" });
+        return res.status(401).json({ error: "Invalid credentials | password not match" });
       }
 
       if (user.status !== "active") {

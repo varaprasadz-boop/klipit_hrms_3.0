@@ -27,7 +27,7 @@ export default function CompanyLogin() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Invalid credentials");
+        throw new Error(data.error || "Invalid credentials | from login");
       }
 
       if (data.user.role !== "COMPANY_ADMIN") {
@@ -57,7 +57,7 @@ export default function CompanyLogin() {
     } catch (error: any) {
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error.message || "Invalid credentials | company login file ",
         variant: "destructive",
       });
     } finally {
