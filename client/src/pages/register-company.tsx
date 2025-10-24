@@ -60,6 +60,24 @@ export default function RegisterCompany() {
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId);
 
+  // Calculate total monthly cost based on employee count
+  const calculateTotalCost = (plan: typeof selectedPlan, empCount: number): number => {
+    if (!plan) return 0;
+    
+    const basePrice = plan.price || 0;
+    const includedEmployees = plan.employeesIncluded || 0;
+    const pricePerAdditional = plan.pricePerAdditionalEmployee || 0;
+    
+    if (empCount <= includedEmployees) {
+      return basePrice;
+    }
+    
+    const additionalEmployees = empCount - includedEmployees;
+    return basePrice + (additionalEmployees * pricePerAdditional);
+  };
+
+  const totalCost = calculateTotalCost(selectedPlan, employeeCount);
+
   const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -588,16 +606,23 @@ export default function RegisterCompany() {
                               <CheckCircle2 className="h-5 w-5 text-primary" />
                             )}
                           </CardTitle>
-                          <CardDescription>
-                            <span className="text-2xl font-bold text-foreground">₹{plan.price}</span>
-                            <span className="text-sm">/{plan.duration} month{plan.duration > 1 ? 's' : ''}</span>
+                          <CardDescription className="space-y-1">
+                            <div>
+                              <span className="text-2xl font-bold text-foreground">₹{plan.price}</span>
+                              <span className="text-sm">/{plan.duration} month{plan.duration > 1 ? 's' : ''}</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                              Includes up to {plan.employeesIncluded} employees
+                            </p>
+                            {plan.pricePerAdditionalEmployee > 0 && (
+                              <p className="text-sm text-muted-foreground">
+                                +₹{plan.pricePerAdditionalEmployee} per additional employee
+                              </p>
+                            )}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">
-                              Up to {plan.maxEmployees} employees
-                            </p>
                             {Array.isArray(plan.features) && plan.features.length > 0 && (
                               <ul className="text-sm space-y-1">
                                 {plan.features.map((feature: string, idx: number) => (
@@ -683,14 +708,32 @@ export default function RegisterCompany() {
                           <span className="text-muted-foreground">Employee Count:</span>
                           <span className="font-medium">{employeeCount}</span>
                         </div>
+                        <div className="space-y-2 pt-2">
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Base Price ({selectedPlan.employeesIncluded} employees):</span>
+                            <span className="font-medium">₹{selectedPlan.price.toLocaleString('en-IN')}</span>
+                          </div>
+                          {employeeCount > selectedPlan.employeesIncluded && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">
+                                Additional Employees ({employeeCount - selectedPlan.employeesIncluded} × ₹{selectedPlan.pricePerAdditionalEmployee}):
+                              </span>
+                              <span className="font-medium">
+                                ₹{((employeeCount - selectedPlan.employeesIncluded) * selectedPlan.pricePerAdditionalEmployee).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                         <div className="flex justify-between items-center pt-3 border-t">
                           <span className="font-semibold">Total Monthly Cost:</span>
                           <span className="text-2xl font-bold text-primary">
-                            ₹{selectedPlan.price.toLocaleString('en-IN')}
+                            ₹{totalCost.toLocaleString('en-IN')}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Fixed monthly price for up to {selectedPlan.maxEmployees} employees
+                          {employeeCount <= selectedPlan.employeesIncluded 
+                            ? `Includes up to ${selectedPlan.employeesIncluded} employees` 
+                            : `${selectedPlan.employeesIncluded} included + ${employeeCount - selectedPlan.employeesIncluded} additional`}
                         </p>
                       </div>
                     )}
@@ -728,10 +771,28 @@ export default function RegisterCompany() {
                     <div className="mb-6">
                       <h3 className="text-lg font-semibold mb-2">Payment Summary</h3>
                       {selectedPlan && (
-                        <div className="bg-muted p-4 rounded-lg">
+                        <div className="bg-muted p-4 rounded-lg space-y-3">
                           <div className="flex justify-between items-center">
                             <span className="font-medium">{selectedPlan.displayName}</span>
-                            <span className="text-2xl font-bold">₹{selectedPlan.price}</span>
+                            <span className="font-semibold">₹{selectedPlan.price.toLocaleString('en-IN')}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">Number of Employees:</span>
+                            <span className="font-medium">{employeeCount}</span>
+                          </div>
+                          {employeeCount > selectedPlan.employeesIncluded && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span className="text-muted-foreground">
+                                Additional Employees ({employeeCount - selectedPlan.employeesIncluded}):
+                              </span>
+                              <span className="font-medium">
+                                ₹{((employeeCount - selectedPlan.employeesIncluded) * selectedPlan.pricePerAdditionalEmployee).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex justify-between items-center pt-3 border-t">
+                            <span className="font-semibold">Total Amount:</span>
+                            <span className="text-2xl font-bold text-primary">₹{totalCost.toLocaleString('en-IN')}</span>
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">
                             {selectedPlan.duration} month{selectedPlan.duration > 1 ? 's' : ''} subscription

@@ -70,15 +70,19 @@ Multi-step registration wizard with secure password handling and super admin app
 - Returns sessionId for tracking subsequent steps
 
 **Step 2: Plan Selection** (`POST /api/registration/:sessionId/select-plan`)
-- Users select from active subscription plans (Basic ₹5k, Standard ₹10k, Premium ₹20k per month)
+- Users select from active subscription plans with per-employee pricing
+- Each plan shows: base price, included employees, cost per additional employee
 - Validates plan exists and is active
 - Updates session with selected planId
 
 **Step 3: Employee Count** (`POST /api/registration/:sessionId/add-employees`)
-- Simplified interface: Select number of employees (1-500)
-- Displays real-time pricing based on selected plan
+- Simplified interface: Select number of employees (1-maxEmployees based on plan)
+- **Dynamic Price Calculation**: Real-time total cost computed based on:
+  - If employeeCount ≤ employeesIncluded: show base price only
+  - If employeeCount > employeesIncluded: show base price + (additional × pricePerAdditional)
+- Pricing breakdown displayed: base price + additional employee charges = total
 - Employee count stored in session; actual employees added later by admin post-approval
-- Clean UX with employee count selector and pricing summary
+- Clean UX with employee count selector and detailed pricing summary
 
 **Step 4: Payment Method** (`POST /api/registration/:sessionId/pay-online` or `/pay-offline`)
 - **Online Payment**: Dummy card form (card number, expiry, CVV) for simulation
@@ -95,20 +99,28 @@ Multi-step registration wizard with secure password handling and super admin app
 ### Key Features
 
 #### Subscription Plans System
-- **Functionality**: Tiered pricing model with employee limits and feature sets.
-- **Schema**: `plans` (name, displayName, price, duration, maxEmployees, features array, isActive flag).
-- **Plans**: Three default tiers seeded automatically:
-  - **Basic Plan**: ₹5,000/month for up to 50 employees
-  - **Standard Plan**: ₹10,000/month for up to 100 employees
-  - **Premium Plan**: ₹20,000/month for up to 500 employees
-- **Registration**: Companies select plan during sign-up; plan determines maxEmployees limit.
+- **Functionality**: Tiered pricing model with per-employee pricing and feature sets.
+- **Schema**: `plans` (name, displayName, price, duration, maxEmployees, employeesIncluded, pricePerAdditionalEmployee, features array, isActive flag).
+- **Pricing Model**: Dynamic per-employee pricing:
+  - **Base Price**: Monthly fee that includes a set number of employees
+  - **Additional Employee Cost**: Per-employee charge beyond the included count
+  - **Total Cost Formula**: `basePrice + (additionalEmployees × pricePerAdditionalEmployee)` where `additionalEmployees = max(0, employeeCount - employeesIncluded)`
+- **Plans**: Three default tiers configured:
+  - **Basic Plan**: ₹299/month, includes up to 10 employees, +₹20 per additional employee, max 100 employees
+  - **Advance Plan**: ₹599/month, includes up to 25 employees, +₹25 per additional employee, max 200 employees
+  - **Pro Plan**: ₹999/month, includes up to 50 employees, +₹50 per additional employee, max 500 employees
+- **Registration Flow**: 
+  - Step 2: Companies select plan and see pricing structure (base price + per-employee pricing)
+  - Step 3: Enter employee count and see real-time cost calculation with breakdown
+  - Step 4: View final calculated total before payment
+  - Dynamic pricing ensures companies pay only for what they need
 - **API Endpoints**:
   - `GET /api/plans` - Public endpoint for active plans (used during registration)
   - `GET /api/plans/all` - Super admin: view all plans
   - `POST /api/plans` - Super admin: create new plan
   - `PATCH /api/plans/:id` - Super admin: update plan
   - `DELETE /api/plans/:id` - Super admin: delete plan
-- **Validation**: Backend validates plan exists and is active before registration; returns 400 for invalid selections.
+- **Validation**: Backend validates plan exists, is active, and employee count doesn't exceed maxEmployees before registration.
 
 #### Payroll Management System
 - **Functionality**: Automatic generation, approval workflows, payslip management.

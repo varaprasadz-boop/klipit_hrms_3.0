@@ -66,8 +66,10 @@ export const plans = pgTable("plans", {
   name: text("name").notNull().unique(), // internal name like "basic", "premium"
   displayName: text("display_name").notNull(), // display name like "Basic Plan"
   duration: integer("duration").notNull().default(1), // duration in months
-  price: integer("price").notNull().default(0), // price in rupees
-  maxEmployees: integer("max_employees").notNull().default(50),
+  price: integer("price").notNull().default(0), // base price in rupees per month
+  maxEmployees: integer("max_employees").notNull().default(50), // maximum allowed employees
+  employeesIncluded: integer("employees_included").notNull().default(10), // employees included in base price
+  pricePerAdditionalEmployee: integer("price_per_additional_employee").notNull().default(0), // cost per employee beyond included count
   features: jsonb("features").notNull().default([]), // array of feature strings
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
