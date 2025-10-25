@@ -8,6 +8,32 @@ Klipit by Bova is a multi-tenant HR management system offering comprehensive fun
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Work (October 2025)
+
+### Making All Data Dynamic (In Progress)
+**Objective**: Remove all hardcoded/mock data from the application. All test data must be deletable and manageable through CRUD operations.
+
+**Identified Mock Data Locations:**
+- `client/src/components/EmployeeTable.tsx` - Mock employees array
+- `client/src/components/PayslipsList.tsx` - Mock payslips array
+- `client/src/pages/employee/leave.tsx` - Mock leave requests and balance
+- `client/src/pages/admin/leave.tsx` - Mock leave data
+- `client/src/pages/admin/workflows.tsx` - Mock employees, departments, workflows
+- `client/src/pages/superadmin/support.tsx` - Mock support tickets
+- `client/src/pages/superadmin/audit-logs.tsx` - Mock audit logs
+- `client/src/components/WorkflowKanban.tsx` - Mock workflows
+- `client/src/components/NoticeboardFeed.tsx` - Mock notices
+- `client/src/pages/monitoring/live-location.tsx` - Mock employee locations
+
+**Completed:**
+- Super Admin plans management now fully dynamic with create/edit/delete operations
+- Fixed API parameter order in apiRequest calls (method, url, data)
+- Fixed route ordering for /api/plans/all vs /api/plans/:id
+
+**In Progress:**
+- Connecting all modules to backend APIs
+- Implementing full CRUD operations for all data
+
 ## System Credentials
 
 ### Super Admin Login (`/login/superadmin`)

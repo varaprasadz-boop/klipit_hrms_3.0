@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Users } from "lucide-react";
 import {
   Table,
@@ -12,23 +14,57 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// todo: remove mock functionality
-const mockEmployees = [
-  { id: 1, name: "John Doe", email: "john@company.com", department: "Engineering", role: "Senior Developer", status: "Active" },
-  { id: 2, name: "Jane Smith", email: "jane@company.com", department: "HR", role: "HR Manager", status: "Active" },
-  { id: 3, name: "Mike Johnson", email: "mike@company.com", department: "Sales", role: "Sales Executive", status: "Active" },
-  { id: 4, name: "Sarah Williams", email: "sarah@company.com", department: "Marketing", role: "Marketing Lead", status: "On Leave" },
-];
+import type { Employee, Department, Designation } from "@shared/schema";
 
 export default function EmployeeTable() {
   const [search, setSearch] = useState("");
 
-  const filtered = mockEmployees.filter(emp =>
-    emp.name.toLowerCase().includes(search.toLowerCase()) ||
-    emp.email.toLowerCase().includes(search.toLowerCase()) ||
-    emp.department.toLowerCase().includes(search.toLowerCase())
-  );
+  // Fetch employees from API
+  const { data: employees = [], isLoading } = useQuery<Employee[]>({
+    queryKey: ["/api/employees"],
+  });
+
+  // Fetch departments for mapping IDs to names
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+  });
+
+  // Fetch designations for mapping IDs to names
+  const { data: designations = [] } = useQuery<Designation[]>({
+    queryKey: ["/api/designations"],
+  });
+
+  // Create lookup maps for departments and designations
+  const departmentMap = useMemo(() => {
+    return departments.reduce((acc, dept) => {
+      acc[dept.id] = dept.name;
+      return acc;
+    }, {} as Record<string, string>);
+  }, [departments]);
+
+  const designationMap = useMemo(() => {
+    return designations.reduce((acc, desig) => {
+      acc[desig.id] = desig.name;
+      return acc;
+    }, {} as Record<string, string>);
+  }, [designations]);
+
+  // Filter employees based on search
+  const filtered = useMemo(() => {
+    return employees.filter(emp => {
+      const fullName = `${emp.firstName} ${emp.lastName}`;
+      const department = emp.departmentId ? departmentMap[emp.departmentId] || "" : "";
+      const designation = emp.designationId ? designationMap[emp.designationId] || "" : "";
+      
+      const searchLower = search.toLowerCase();
+      return (
+        fullName.toLowerCase().includes(searchLower) ||
+        emp.email.toLowerCase().includes(searchLower) ||
+        department.toLowerCase().includes(searchLower) ||
+        designation.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [employees, search, departmentMap, designationMap]);
 
   return (
     <Card>
@@ -51,40 +87,62 @@ export default function EmployeeTable() {
         </div>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map((emp) => (
-              <TableRow key={emp.id} className="hover-elevate">
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>{emp.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{emp.name}</p>
-                      <p className="text-sm text-muted-foreground">{emp.email}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{emp.department}</TableCell>
-                <TableCell>{emp.role}</TableCell>
-                <TableCell>
-                  <Badge variant={emp.status === "Active" ? "default" : "secondary"}>
-                    {emp.status}
-                  </Badge>
-                </TableCell>
-              </TableRow>
+        {isLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-16 w-full" />
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {search ? "No employees found matching your search" : "No employees yet"}
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Employee</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map((emp) => {
+                const fullName = `${emp.firstName} ${emp.lastName}`;
+                const initials = `${emp.firstName[0]}${emp.lastName[0]}`;
+                const department = emp.departmentId ? departmentMap[emp.departmentId] : "—";
+                const designation = emp.designationId ? designationMap[emp.designationId] : "—";
+                
+                return (
+                  <TableRow key={emp.id} className="hover-elevate" data-testid={`row-employee-${emp.id}`}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar>
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium" data-testid={`text-name-${emp.id}`}>{fullName}</p>
+                          <p className="text-sm text-muted-foreground" data-testid={`text-email-${emp.id}`}>{emp.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell data-testid={`text-department-${emp.id}`}>{department}</TableCell>
+                    <TableCell data-testid={`text-designation-${emp.id}`}>{designation}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={emp.status === "active" ? "default" : "secondary"}
+                        data-testid={`badge-status-${emp.id}`}
+                      >
+                        {emp.status}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );
