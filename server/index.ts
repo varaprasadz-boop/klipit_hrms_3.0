@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import { neon } from '@neondatabase/serverless';
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
