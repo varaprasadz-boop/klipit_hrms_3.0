@@ -29,10 +29,28 @@ Preferred communication style: Simple, everyday language.
 - Super Admin plans management now fully dynamic with create/edit/delete operations
 - Fixed API parameter order in apiRequest calls (method, url, data)
 - Fixed route ordering for /api/plans/all vs /api/plans/:id
+- **EmployeeTable Component**: Removed mock data, integrated with /api/employees, /api/departments, /api/designations
+- **PayslipsList Component**: Removed mock data, integrated with /api/payroll and /api/payroll/:id/items
+- **NoticeboardFeed Component**: Complete implementation from scratch
+  - Added schema: `notices` table with fields (id, companyId, title, content, category, pinned, postedBy, createdAt)
+  - Added storage methods: getNotice, getNoticesByCompany, createNotice, updateNotice, deleteNotice
+  - Added API routes: GET/POST/PATCH/DELETE /api/notices with proper authorization
+  - Removed ALL mock data from frontend, integrated with API using TanStack Query
+- **Leave Management System**: Complete backend + employee frontend implementation
+  - Added schema: `leaveRequests` table (id, companyId, employeeId, leaveTypeId, fromDate, toDate, days, reason, status, appliedOn, approvedBy, approvedOn, rejectedBy, rejectedOn, rejectionReason)
+  - Added schema: `leaveBalances` table (id, companyId, employeeId, leaveTypeId, year, totalDays, usedDays, remainingDays)
+  - Added storage methods for both leave requests and balances with role-based queries
+  - Added API routes: GET/POST/PATCH/DELETE /api/leave-requests and GET/POST/PATCH /api/leave-balances
+  - **Employee Leave Page**: Removed ALL mock data, integrated with API
+    - Dynamic leave balances display from database
+    - Real leave request history with status tracking
+    - Functional apply leave form with automatic day calculation
+    - Loading and empty states throughout
 
 **In Progress:**
-- Connecting all modules to backend APIs
-- Implementing full CRUD operations for all data
+- Admin leave page: Still has mock data, needs API integration for approving/rejecting requests
+- Support tickets and audit logs for super admin
+- Live location tracking module
 
 ## System Credentials
 
