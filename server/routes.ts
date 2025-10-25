@@ -1033,6 +1033,93 @@ export async function registerRoutes(app: Express): Promise<Server> {
     },
   );
 
+  app.post(
+    "/api/companies/:id/request-subdomain",
+    requireCompanyAdmin,
+    enforceCompanyScope,
+    async (req, res) => {
+      try {
+        const { subdomain } = req.body;
+
+        if (!subdomain || typeof subdomain !== "string") {
+          return res.status(400).json({ error: "Subdomain is required" });
+        }
+
+        const normalizedSubdomain = subdomain.toLowerCase().trim();
+        if (!/^[a-z0-9-]+$/.test(normalizedSubdomain)) {
+          return res.status(400).json({ 
+            error: "Subdomain can only contain lowercase letters, numbers, and hyphens" 
+          });
+        }
+
+        const existingCompany = await storage.getCompanyBySubdomain(normalizedSubdomain);
+        if (existingCompany) {
+          return res.status(409).json({ error: "Subdomain already taken" });
+        }
+
+        const company = await storage.updateCompany(req.params.id, {
+          subdomain: normalizedSubdomain,
+          subdomainRequestedAt: new Date(),
+          subdomainStatus: "pending",
+        });
+
+        if (!company) {
+          return res.status(404).json({ error: "Company not found" });
+        }
+
+        res.json(company);
+      } catch (error) {
+        console.error("Request subdomain error:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    },
+  );
+
+  app.get("/api/admin/subdomain-requests", requireSuperAdmin, async (req, res) => {
+    try {
+      const companies = await storage.getCompaniesBySubdomainStatus("pending");
+      res.json(companies);
+    } catch (error) {
+      console.error("Get subdomain requests error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/subdomain-requests/:id/approve", requireSuperAdmin, async (req, res) => {
+    try {
+      const company = await storage.updateCompany(req.params.id, {
+        subdomainStatus: "approved",
+      });
+
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Approve subdomain error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/admin/subdomain-requests/:id/reject", requireSuperAdmin, async (req, res) => {
+    try {
+      const company = await storage.updateCompany(req.params.id, {
+        subdomain: null,
+        subdomainStatus: "rejected",
+      });
+
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      res.json(company);
+    } catch (error) {
+      console.error("Reject subdomain error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get(
     "/api/companies/:id/users",
     requireCompanyAdmin,

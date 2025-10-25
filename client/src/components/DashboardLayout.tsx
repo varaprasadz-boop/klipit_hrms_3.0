@@ -26,6 +26,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import klipitLogo from "@assets/Klipit By Bova_1761061110237.png";
+import { useAuth } from "@/lib/auth-context";
+import { useQuery } from "@tanstack/react-query";
 
 interface MenuItem {
   title: string;
@@ -46,6 +48,12 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children, menuItems, userType }: DashboardLayoutProps) {
   const [location] = useLocation();
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
+  const { user } = useAuth();
+
+  const { data: company } = useQuery({
+    queryKey: [`/api/companies/${user?.companyId}`],
+    enabled: !!user?.companyId,
+  });
 
   // Initialize all collapsible items as open by default
   useEffect(() => {
@@ -80,7 +88,12 @@ export default function DashboardLayout({ children, menuItems, userType }: Dashb
           <SidebarContent>
             <div className="p-4 border-b">
               <div className="flex items-center justify-center">
-                <img src={klipitLogo} alt="Klipit by Bova" className="h-16 w-auto" />
+                <img 
+                  src={company?.logoUrl || klipitLogo} 
+                  alt={company?.name || "Klipit by Bova"} 
+                  className="h-16 w-auto" 
+                  data-testid="img-company-logo"
+                />
               </div>
               <p className="text-xs text-muted-foreground mt-2 text-center">
                 {userType === "admin" ? "Admin Dashboard" : "Employee Portal"}

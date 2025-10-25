@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -5,44 +7,74 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Download, Eye } from "lucide-react";
-
-const mockRequests = [
-  { 
-    id: 4, 
-    user: "Oct Company Oct Company", 
-    email: "octcompany@mailinator.com",
-    domain: "octcompany", 
-    status: "approved", 
-    createdAt: "20-10-2025 08:16 AM" 
-  },
-  { 
-    id: 3, 
-    user: "Elon Musk", 
-    email: "elon@mailinator.com",
-    domain: "elonmusk", 
-    status: "approved", 
-    createdAt: "19-10-2025 08:55 PM" 
-  },
-  { 
-    id: 2, 
-    user: "Asif Ahmed", 
-    email: "asifahmed715@gmail.com",
-    domain: "codexhive", 
-    status: "approved", 
-    createdAt: "18-10-2025 09:05 PM" 
-  },
-  { 
-    id: 1, 
-    user: "Demo Customer", 
-    email: "democustomer@tmvtshop.in",
-    domain: "testdomain", 
-    status: "approved", 
-    createdAt: "18-10-2025 05:21 PM" 
-  },
-];
+import { Search, Download, Check, X, Skeleton as SkeletonIcon } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { Company } from "@shared/schema";
+import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export default function DomainRequestsPage() {
+  const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("pending");
+  const [selectedRequest, setSelectedRequest] = useState<Company | null>(null);
+  const [dialogAction, setDialogAction] = useState<"approve" | "reject" | null>(null);
+
+  const { data: requests, isLoading } = useQuery<Company[]>({
+    queryKey: ["/api/admin/subdomain-requests"],
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/admin/subdomain-requests/${id}/approve`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subdomain-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      toast({
+        title: "Request Approved",
+        description: "The subdomain request has been approved successfully.",
+      });
+      setSelectedRequest(null);
+      setDialogAction(null);
+    },
+    onError: (error: any) => {
+      console.error("Approve error:", error);
+      toast({
+        variant: "destructive",
+        title: "Approval Failed",
+        description: error.message || "Failed to approve subdomain request.",
+      });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/admin/subdomain-requests/${id}/reject`, {});
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/subdomain-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/companies"] });
+      toast({
+        title: "Request Rejected",
+        description: "The subdomain request has been rejected.",
+      });
+      setSelectedRequest(null);
+      setDialogAction(null);
+    },
+    onError: (error: any) => {
+      console.error("Reject error:", error);
+      toast({
+        variant: "destructive",
+        title: "Rejection Failed",
+        description: error.message || "Failed to reject subdomain request.",
+      });
+    },
+  });
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
@@ -57,6 +89,43 @@ export default function DomainRequestsPage() {
     return colors[index % colors.length];
   };
 
+  const filteredRequests = requests?.filter((req) => {
+    const matchesSearch = req.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         req.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         req.subdomain?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === "all" || req.subdomainStatus === statusFilter;
+    return matchesSearch && matchesStatus;
+  }) || [];
+
+  const handleApprove = (request: Company) => {
+    setSelectedRequest(request);
+    setDialogAction("approve");
+  };
+
+  const handleReject = (request: Company) => {
+    setSelectedRequest(request);
+    setDialogAction("reject");
+  };
+
+  const confirmAction = () => {
+    if (!selectedRequest) return;
+
+    if (dialogAction === "approve") {
+      approveMutation.mutate(selectedRequest.id);
+    } else if (dialogAction === "reject") {
+      rejectMutation.mutate(selectedRequest.id);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -66,20 +135,7 @@ export default function DomainRequestsPage() {
 
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Select defaultValue="7">
-            <SelectTrigger className="w-20" data-testid="select-page-size">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5</SelectItem>
-              <SelectItem value="7">7</SelectItem>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="20">20</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select defaultValue="all">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40" data-testid="select-status">
               <SelectValue />
             </SelectTrigger>
@@ -98,13 +154,11 @@ export default function DomainRequestsPage() {
             <Input 
               placeholder="Search Domain Request..." 
               className="pl-9"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               data-testid="input-search-domains"
             />
           </div>
-          <Button variant="outline" data-testid="button-export">
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
         </div>
       </div>
 
@@ -112,71 +166,118 @@ export default function DomainRequestsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">ID</TableHead>
-              <TableHead>USER</TableHead>
+              <TableHead>COMPANY</TableHead>
               <TableHead>DOMAIN NAME</TableHead>
-              <TableHead>CREATED AT</TableHead>
+              <TableHead>REQUESTED AT</TableHead>
               <TableHead>STATUS</TableHead>
               <TableHead className="text-right">ACTIONS</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockRequests.map((request, index) => (
-              <TableRow key={request.id} data-testid={`row-domain-${request.id}`}>
-                <TableCell className="font-mono text-sm text-muted-foreground">
-                  {request.id}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={`text-xs ${getAvatarColor(index)}`}>
-                        {getInitials(request.user)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-medium">{request.user}</div>
-                      <div className="text-xs text-muted-foreground">{request.email}</div>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="font-medium">
-                  {request.domain}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {request.createdAt}
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={request.status === "approved" ? "default" : "secondary"}
-                    className={request.status === "approved" ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}
-                  >
-                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" data-testid={`button-view-${request.id}`}>
-                    <Eye className="h-4 w-4" />
-                  </Button>
+            {filteredRequests.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  No domain requests found
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredRequests.map((request, index) => (
+                <TableRow key={request.id} data-testid={`row-domain-${request.id}`}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className={`text-xs ${getAvatarColor(index)}`}>
+                          {getInitials(request.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{request.name}</div>
+                        <div className="text-xs text-muted-foreground">{request.email}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {request.subdomain}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {request.subdomainRequestedAt ? new Date(request.subdomainRequestedAt).toLocaleString() : "N/A"}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={
+                        request.subdomainStatus === "approved" ? "default" :
+                        request.subdomainStatus === "rejected" ? "destructive" : "secondary"
+                      }
+                      className={
+                        request.subdomainStatus === "approved" ? "bg-green-100 text-green-700 hover:bg-green-100" :
+                        request.subdomainStatus === "pending" ? "bg-yellow-100 text-yellow-700 hover:bg-yellow-100" : ""
+                      }
+                    >
+                      {request.subdomainStatus?.charAt(0).toUpperCase() + (request.subdomainStatus?.slice(1) || "")}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      {request.subdomainStatus === "pending" && (
+                        <>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleApprove(request)}
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            data-testid={`button-approve-${request.id}`}
+                          >
+                            <Check className="h-4 w-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleReject(request)}
+                            disabled={approveMutation.isPending || rejectMutation.isPending}
+                            data-testid={`button-reject-${request.id}`}
+                          >
+                            <X className="h-4 w-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {mockRequests.length} of {mockRequests.length} domain requests
+          Showing {filteredRequests.length} domain request{filteredRequests.length !== 1 ? "s" : ""}
         </p>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" disabled>
-            Previous
-          </Button>
-          <Button variant="outline" size="sm" disabled>
-            Next
-          </Button>
-        </div>
       </div>
+
+      <AlertDialog open={dialogAction !== null} onOpenChange={() => { setDialogAction(null); setSelectedRequest(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {dialogAction === "approve" ? "Approve Domain Request" : "Reject Domain Request"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dialogAction === "approve" 
+                ? `Are you sure you want to approve the subdomain "${selectedRequest?.subdomain}" for ${selectedRequest?.name}?`
+                : `Are you sure you want to reject the subdomain request "${selectedRequest?.subdomain}" from ${selectedRequest?.name}?`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAction}>
+              {dialogAction === "approve" ? "Approve" : "Reject"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import {
   LayoutDashboard, Clock, Umbrella, Workflow, 
   Receipt, Megaphone, UserPlus, Shield, 
   BarChart3, Settings, Target, Building2, Star, DollarSign,
-  FileText, Save, Upload, Building
+  FileText, Save, Upload, Building, Globe
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -86,6 +86,8 @@ export default function CompanySettingsPage() {
     secondaryColor: "#000000",
   });
 
+  const [subdomainInput, setSubdomainInput] = useState("");
+
   const { data: company, isLoading } = useQuery<Company>({
     queryKey: [`/api/companies/${companyId}`],
     enabled: !!companyId,
@@ -123,6 +125,29 @@ export default function CompanySettingsPage() {
         variant: "destructive",
         title: "Error",
         description: "Failed to update company settings.",
+      });
+    },
+  });
+
+  const requestSubdomainMutation = useMutation({
+    mutationFn: async (subdomain: string) => {
+      const response = await apiRequest("POST", `/api/companies/${companyId}/request-subdomain`, { subdomain });
+      return await response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/companies/${companyId}`] });
+      setSubdomainInput("");
+      toast({
+        title: "Request Submitted",
+        description: "Your subdomain request has been sent to the admin for approval.",
+      });
+    },
+    onError: (error: any) => {
+      console.error("Request subdomain error:", error);
+      toast({
+        variant: "destructive",
+        title: "Request Failed",
+        description: error.message || "Failed to request subdomain.",
       });
     },
   });
@@ -347,6 +372,76 @@ export default function CompanySettingsPage() {
                   <p className="text-xs text-muted-foreground text-center">
                     Changes will be applied immediately after saving
                   </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Subdomain
+                  </CardTitle>
+                  <CardDescription>Request a custom subdomain for your company</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {company?.subdomain ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Current Subdomain:</span>
+                        <span className="font-medium">{company.subdomain}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Status:</span>
+                        <span className={`font-medium capitalize ${
+                          company.subdomainStatus === 'approved' ? 'text-green-600' :
+                          company.subdomainStatus === 'pending' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {company.subdomainStatus || "N/A"}
+                        </span>
+                      </div>
+                      {company.subdomainStatus === 'approved' && (
+                        <p className="text-xs text-muted-foreground">
+                          Your custom subdomain is active
+                        </p>
+                      )}
+                      {company.subdomainStatus === 'pending' && (
+                        <p className="text-xs text-yellow-600">
+                          Your request is pending approval
+                        </p>
+                      )}
+                      {company.subdomainStatus === 'rejected' && (
+                        <p className="text-xs text-red-600">
+                          Your request was rejected. You can request a different subdomain.
+                        </p>
+                      )}
+                    </div>
+                  ) : null}
+
+                  {(!company?.subdomain || company?.subdomainStatus === 'rejected') && (
+                    <div className="space-y-2">
+                      <Label htmlFor="subdomain">Subdomain</Label>
+                      <Input
+                        id="subdomain"
+                        value={subdomainInput}
+                        onChange={(e) => setSubdomainInput(e.target.value.toLowerCase())}
+                        placeholder="mycompany"
+                        data-testid="input-subdomain"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Request a subdomain like: mycompany.klipit.com
+                      </p>
+                      <Button
+                        onClick={() => requestSubdomainMutation.mutate(subdomainInput)}
+                        disabled={!subdomainInput || requestSubdomainMutation.isPending}
+                        className="w-full"
+                        variant="outline"
+                        data-testid="button-request-subdomain"
+                      >
+                        {requestSubdomainMutation.isPending ? "Requesting..." : "Request Subdomain"}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
