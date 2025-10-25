@@ -33,7 +33,7 @@ Preferred communication style: Simple, everyday language.
 -   **Persistence**: All data persists across server restarts.
 -   **Seeding**: Creates super admin user and 3 default subscription plans.
 -   **Schema Highlights**:
-    -   `companies`: Multi-tenant records with status, plan, maxEmployees.
+    -   `companies`: Multi-tenant records with status, plan, maxEmployees, logoUrl, subdomain, subdomainStatus, subdomainRequestedAt.
     -   `users`: Employee records with role, company, department, position, hashed password.
     -   `plans`: Subscription plans with pricing, duration, employee limits, features.
     -   `registration_sessions`: Multi-step registration tracking.
@@ -56,6 +56,20 @@ A multi-step wizard with secure password handling and super admin approval:
 5.  **Approval & Activation**: Super admin reviews and approves, changing company status from "pending" to "active".
 
 ### Key Features
+
+#### White-Label Features
+-   **Company Logo Display**: Companies can set custom logos that display in the dashboard sidebar for all users (admins and employees). Falls back to default Klipit logo if not configured.
+-   **Custom Subdomain System**: Companies can request custom subdomains through company settings, subject to super admin approval.
+-   **Workflow**:
+    1. Company admin requests subdomain via settings page (status: pending)
+    2. Super admin reviews and approves/rejects via Domain Requests page
+    3. Upon approval, subdomain status changes to "approved" and is assigned to the company
+-   **Database Fields**: `companies.subdomain`, `companies.subdomainStatus`, `companies.subdomainRequestedAt`
+-   **API Endpoints**:
+    - POST /api/companies/:id/request-subdomain - Request subdomain
+    - GET /api/admin/subdomain-requests - List pending requests
+    - POST /api/admin/subdomain-requests/:id/approve - Approve request
+    - POST /api/admin/subdomain-requests/:id/reject - Reject request
 
 #### Subscription Plans System
 -   **Functionality**: Tiered pricing model with per-employee pricing and feature sets.
