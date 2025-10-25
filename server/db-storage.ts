@@ -81,8 +81,17 @@ export class DbStorage implements IStorage {
     return company;
   }
 
+  async getCompanyBySubdomain(subdomain: string): Promise<Company | undefined> {
+    const [company] = await db.select().from(schema.companies).where(eq(schema.companies.subdomain, subdomain));
+    return company;
+  }
+
   async getAllCompanies(): Promise<Company[]> {
     return await db.select().from(schema.companies);
+  }
+
+  async getCompaniesBySubdomainStatus(status: string): Promise<Company[]> {
+    return await db.select().from(schema.companies).where(eq(schema.companies.subdomainStatus, status));
   }
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {

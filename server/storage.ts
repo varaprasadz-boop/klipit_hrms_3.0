@@ -32,7 +32,9 @@ export interface IStorage {
   getCompany(id: string): Promise<Company | undefined>;
   getCompanyByEmail(email: string): Promise<Company | undefined>;
   getCompanyByPhone(phone: string): Promise<Company | undefined>;
+  getCompanyBySubdomain(subdomain: string): Promise<Company | undefined>;
   getAllCompanies(): Promise<Company[]>;
+  getCompaniesBySubdomainStatus(status: string): Promise<Company[]>;
   createCompany(company: InsertCompany): Promise<Company>;
   updateCompany(id: string, updates: Partial<Company>): Promise<Company | undefined>;
   registerCompany(data: RegisterCompany): Promise<{ company: Company; user: User }>;
@@ -939,8 +941,20 @@ export class MemStorage implements IStorage {
     return Array.from(this.companies.values()).find((company) => company.email === email);
   }
 
+  async getCompanyByPhone(phone: string): Promise<Company | undefined> {
+    return Array.from(this.companies.values()).find((company) => company.phone === phone);
+  }
+
+  async getCompanyBySubdomain(subdomain: string): Promise<Company | undefined> {
+    return Array.from(this.companies.values()).find((company) => company.subdomain === subdomain);
+  }
+
   async getAllCompanies(): Promise<Company[]> {
     return Array.from(this.companies.values());
+  }
+
+  async getCompaniesBySubdomainStatus(status: string): Promise<Company[]> {
+    return Array.from(this.companies.values()).filter((company) => company.subdomainStatus === status);
   }
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {

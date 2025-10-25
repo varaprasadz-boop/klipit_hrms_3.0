@@ -20,6 +20,9 @@ export const companies = pgTable("companies", {
   plan: text("plan").notNull().default("basic"),
   maxEmployees: text("max_employees").default("50"),
   logoUrl: text("logo_url"),
+  subdomain: text("subdomain").unique(),
+  subdomainStatus: text("subdomain_status").default("none"), // none, pending, approved, rejected
+  subdomainRequestedAt: timestamp("subdomain_requested_at"),
   address: text("address"),
   phone: text("phone"),
   website: text("website"),
@@ -54,6 +57,10 @@ export const updateCompanySettingsSchema = z.object({
   website: z.string().optional(),
   primaryColor: z.string().optional(),
   secondaryColor: z.string().optional(),
+});
+
+export const requestSubdomainSchema = z.object({
+  subdomain: z.string().min(3, "Subdomain must be at least 3 characters").max(63, "Subdomain must be at most 63 characters").regex(/^[a-z0-9-]+$/, "Subdomain can only contain lowercase letters, numbers, and hyphens"),
 });
 
 export type InsertCompany = z.infer<typeof insertCompanySchema>;
