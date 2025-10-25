@@ -682,3 +682,101 @@ export const updateWorkflowSchema = z.object({
 export type InsertWorkflow = z.infer<typeof insertWorkflowSchema>;
 export type UpdateWorkflow = z.infer<typeof updateWorkflowSchema>;
 export type Workflow = typeof workflows.$inferSelect;
+
+export const notices = pgTable("notices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  title: text("title").notNull(),
+  content: text("content"),
+  category: text("category").notNull().default("General"),
+  pinned: boolean("pinned").notNull().default(false),
+  postedBy: varchar("posted_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertNoticeSchema = createInsertSchema(notices).omit({
+  id: true,
+  createdAt: true,
+  companyId: true,
+  postedBy: true,
+}).extend({
+  category: z.string().optional(),
+  pinned: z.boolean().optional(),
+});
+
+export const updateNoticeSchema = z.object({
+  title: z.string().optional(),
+  content: z.string().optional(),
+  category: z.string().optional(),
+  pinned: z.boolean().optional(),
+});
+
+export type InsertNotice = z.infer<typeof insertNoticeSchema>;
+export type UpdateNotice = z.infer<typeof updateNoticeSchema>;
+export type Notice = typeof notices.$inferSelect;
+
+export const leaveRequests = pgTable("leave_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  leaveTypeId: varchar("leave_type_id").notNull().references(() => leaveTypes.id),
+  fromDate: date("from_date").notNull(),
+  toDate: date("to_date").notNull(),
+  days: integer("days").notNull(),
+  reason: text("reason"),
+  status: text("status").notNull().default("pending"), // pending, approved, rejected, cancelled
+  appliedOn: timestamp("applied_on").defaultNow().notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedOn: timestamp("approved_on"),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectedOn: timestamp("rejected_on"),
+  rejectionReason: text("rejection_reason"),
+});
+
+export const insertLeaveRequestSchema = createInsertSchema(leaveRequests).omit({
+  id: true,
+  companyId: true,
+  employeeId: true,
+  appliedOn: true,
+  approvedBy: true,
+  approvedOn: true,
+  rejectedBy: true,
+  rejectedOn: true,
+}).extend({
+  status: z.enum(["pending", "approved", "rejected", "cancelled"]).optional(),
+});
+
+export const updateLeaveRequestSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected", "cancelled"]).optional(),
+  rejectionReason: z.string().optional(),
+});
+
+export type InsertLeaveRequest = z.infer<typeof insertLeaveRequestSchema>;
+export type UpdateLeaveRequest = z.infer<typeof updateLeaveRequestSchema>;
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+
+export const leaveBalances = pgTable("leave_balances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  employeeId: varchar("employee_id").notNull().references(() => users.id),
+  leaveTypeId: varchar("leave_type_id").notNull().references(() => leaveTypes.id),
+  year: integer("year").notNull(),
+  totalDays: integer("total_days").notNull().default(0),
+  usedDays: integer("used_days").notNull().default(0),
+  remainingDays: integer("remaining_days").notNull().default(0),
+});
+
+export const insertLeaveBalanceSchema = createInsertSchema(leaveBalances).omit({
+  id: true,
+  companyId: true,
+});
+
+export const updateLeaveBalanceSchema = z.object({
+  totalDays: z.number().optional(),
+  usedDays: z.number().optional(),
+  remainingDays: z.number().optional(),
+});
+
+export type InsertLeaveBalance = z.infer<typeof insertLeaveBalanceSchema>;
+export type UpdateLeaveBalance = z.infer<typeof updateLeaveBalanceSchema>;
+export type LeaveBalance = typeof leaveBalances.$inferSelect;

@@ -26,6 +26,12 @@ import {
   insertExpenseClaimItemSchema,
   insertWorkflowSchema,
   updateWorkflowSchema,
+  insertNoticeSchema,
+  updateNoticeSchema,
+  insertLeaveRequestSchema,
+  updateLeaveRequestSchema,
+  insertLeaveBalanceSchema,
+  updateLeaveBalanceSchema,
   type ExpenseClaim,
   UserRole,
 } from "@shared/schema";
@@ -3543,6 +3549,314 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success });
     } catch (error) {
       console.error("Delete workflow error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Notice routes
+  app.get("/api/notices", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const notices = await storage.getNoticesByCompany(session.companyId!);
+      res.json(notices);
+    } catch (error) {
+      console.error("Get notices error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      const notice = await storage.getNotice(req.params.id);
+
+      if (!notice) {
+        return res.status(404).json({ error: "Notice not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== notice.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(notice);
+    } catch (error) {
+      console.error("Get notice error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/notices", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Only Company Admin can create notices
+      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "Only admins can create notices" });
+      }
+
+      const noticeData = insertNoticeSchema.parse(req.body);
+
+      const notice = await storage.createNotice({
+        ...noticeData,
+        companyId: session.companyId!,
+        postedBy: session.userId,
+      });
+
+      res.status(201).json(notice);
+    } catch (error) {
+      console.error("Create notice error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      const notice = await storage.getNotice(req.params.id);
+      if (!notice) {
+        return res.status(404).json({ error: "Notice not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== notice.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Only admin or creator can update
+      if (notice.postedBy !== session.userId && session.role !== UserRole.COMPANY_ADMIN) {
+        return res.status(403).json({ error: "Only notice creator or admin can update" });
+      }
+
+      const updates = updateNoticeSchema.parse(req.body);
+      const updatedNotice = await storage.updateNotice(req.params.id, updates);
+
+      res.json(updatedNotice);
+    } catch (error) {
+      console.error("Update notice error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/notices/:id", requireAuth, async (req, res) => {
+    try {
+      const notice = await storage.getNotice(req.params.id);
+      if (!notice) {
+        return res.status(404).json({ error: "Notice not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== notice.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Only creator or admin can delete
+      if (notice.postedBy !== session.userId && session.role !== UserRole.COMPANY_ADMIN) {
+        return res.status(403).json({ error: "Only notice creator or admin can delete" });
+      }
+
+      const success = await storage.deleteNotice(req.params.id);
+      res.json({ success });
+    } catch (error) {
+      console.error("Delete notice error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Leave Request routes
+  app.get("/api/leave-requests", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      let requests;
+      if (session.role === UserRole.SUPER_ADMIN || session.role === UserRole.COMPANY_ADMIN) {
+        requests = await storage.getLeaveRequestsByCompany(session.companyId!);
+      } else {
+        requests = await storage.getLeaveRequestsByEmployee(session.userId);
+      }
+
+      res.json(requests);
+    } catch (error) {
+      console.error("Get leave requests error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/leave-requests/:id", requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getLeaveRequest(req.params.id);
+
+      if (!request) {
+        return res.status(404).json({ error: "Leave request not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== request.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(request);
+    } catch (error) {
+      console.error("Get leave request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/leave-requests", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const requestData = insertLeaveRequestSchema.parse(req.body);
+
+      const leaveRequest = await storage.createLeaveRequest({
+        ...requestData,
+        companyId: session.companyId!,
+        employeeId: session.userId,
+      });
+
+      res.status(201).json(leaveRequest);
+    } catch (error) {
+      console.error("Create leave request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/leave-requests/:id", requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getLeaveRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Leave request not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== request.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const updates = updateLeaveRequestSchema.parse(req.body);
+      
+      // If approving or rejecting, add approver/rejecter info
+      const updateData: any = { ...updates };
+      if (updates.status === "approved") {
+        updateData.approvedBy = session.userId;
+        updateData.approvedOn = new Date();
+      } else if (updates.status === "rejected") {
+        updateData.rejectedBy = session.userId;
+        updateData.rejectedOn = new Date();
+      }
+
+      const updatedRequest = await storage.updateLeaveRequest(req.params.id, updateData);
+
+      res.json(updatedRequest);
+    } catch (error) {
+      console.error("Update leave request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/leave-requests/:id", requireAuth, async (req, res) => {
+    try {
+      const request = await storage.getLeaveRequest(req.params.id);
+      if (!request) {
+        return res.status(404).json({ error: "Leave request not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== request.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Only employee can delete their own pending request or admin can delete any
+      if (request.employeeId !== session.userId && session.role !== UserRole.COMPANY_ADMIN) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const success = await storage.deleteLeaveRequest(req.params.id);
+      res.json({ success });
+    } catch (error) {
+      console.error("Delete leave request error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Leave Balance routes
+  app.get("/api/leave-balances", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+
+      const balances = await storage.getLeaveBalancesByEmployee(session.userId, year);
+      res.json(balances);
+    } catch (error) {
+      console.error("Get leave balances error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/leave-balances", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Only admin can create leave balances
+      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "Only admins can create leave balances" });
+      }
+
+      const balanceData = insertLeaveBalanceSchema.parse(req.body);
+
+      const balance = await storage.createLeaveBalance({
+        ...balanceData,
+        companyId: session.companyId!,
+      });
+
+      res.status(201).json(balance);
+    } catch (error) {
+      console.error("Create leave balance error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/leave-balances/:id", requireAuth, async (req, res) => {
+    try {
+      const balance = await storage.getLeaveBalance(req.params.id);
+      if (!balance) {
+        return res.status(404).json({ error: "Leave balance not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.companyId !== balance.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Only admin can update leave balances
+      if (session.role !== UserRole.COMPANY_ADMIN && session.role !== UserRole.SUPER_ADMIN) {
+        return res.status(403).json({ error: "Only admins can update leave balances" });
+      }
+
+      const updates = updateLeaveBalanceSchema.parse(req.body);
+      const updatedBalance = await storage.updateLeaveBalance(req.params.id, updates);
+
+      res.json(updatedBalance);
+    } catch (error) {
+      console.error("Update leave balance error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

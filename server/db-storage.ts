@@ -1,6 +1,6 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import * as schema from "@shared/schema";
 import type {
   User, InsertUser, Company, InsertCompany, RegisterCompany, UserRole,
@@ -22,7 +22,10 @@ import type {
   PayrollItem, InsertPayrollItem,
   ExpenseClaim, InsertExpenseClaim,
   ExpenseClaimItem, InsertExpenseClaimItem,
-  Workflow, InsertWorkflow
+  Workflow, InsertWorkflow,
+  Notice, InsertNotice,
+  LeaveRequest, InsertLeaveRequest,
+  LeaveBalance, InsertLeaveBalance
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 import { randomUUID } from "crypto";
@@ -622,6 +625,89 @@ export class DbStorage implements IStorage {
 
   async deleteWorkflow(id: string): Promise<boolean> {
     const result = await db.delete(schema.workflows).where(eq(schema.workflows.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Notice methods
+  async getNotice(id: string): Promise<Notice | undefined> {
+    const [notice] = await db.select().from(schema.notices).where(eq(schema.notices.id, id));
+    return notice;
+  }
+
+  async getNoticesByCompany(companyId: string): Promise<Notice[]> {
+    return await db.select().from(schema.notices).where(eq(schema.notices.companyId, companyId)).orderBy(desc(schema.notices.pinned), desc(schema.notices.createdAt));
+  }
+
+  async createNotice(insertNotice: InsertNotice): Promise<Notice> {
+    const [notice] = await db.insert(schema.notices).values(insertNotice).returning();
+    return notice;
+  }
+
+  async updateNotice(id: string, updates: Partial<Notice>): Promise<Notice | undefined> {
+    const [notice] = await db.update(schema.notices).set(updates).where(eq(schema.notices.id, id)).returning();
+    return notice;
+  }
+
+  async deleteNotice(id: string): Promise<boolean> {
+    const result = await db.delete(schema.notices).where(eq(schema.notices.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Leave Request methods
+  async getLeaveRequest(id: string): Promise<LeaveRequest | undefined> {
+    const [request] = await db.select().from(schema.leaveRequests).where(eq(schema.leaveRequests.id, id));
+    return request;
+  }
+
+  async getLeaveRequestsByCompany(companyId: string): Promise<LeaveRequest[]> {
+    return await db.select().from(schema.leaveRequests).where(eq(schema.leaveRequests.companyId, companyId)).orderBy(desc(schema.leaveRequests.appliedOn));
+  }
+
+  async getLeaveRequestsByEmployee(employeeId: string): Promise<LeaveRequest[]> {
+    return await db.select().from(schema.leaveRequests).where(eq(schema.leaveRequests.employeeId, employeeId)).orderBy(desc(schema.leaveRequests.appliedOn));
+  }
+
+  async createLeaveRequest(insertLeaveRequest: InsertLeaveRequest): Promise<LeaveRequest> {
+    const [request] = await db.insert(schema.leaveRequests).values(insertLeaveRequest).returning();
+    return request;
+  }
+
+  async updateLeaveRequest(id: string, updates: Partial<LeaveRequest>): Promise<LeaveRequest | undefined> {
+    const [request] = await db.update(schema.leaveRequests).set(updates).where(eq(schema.leaveRequests.id, id)).returning();
+    return request;
+  }
+
+  async deleteLeaveRequest(id: string): Promise<boolean> {
+    const result = await db.delete(schema.leaveRequests).where(eq(schema.leaveRequests.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Leave Balance methods
+  async getLeaveBalance(id: string): Promise<LeaveBalance | undefined> {
+    const [balance] = await db.select().from(schema.leaveBalances).where(eq(schema.leaveBalances.id, id));
+    return balance;
+  }
+
+  async getLeaveBalancesByEmployee(employeeId: string, year: number): Promise<LeaveBalance[]> {
+    return await db.select().from(schema.leaveBalances).where(and(eq(schema.leaveBalances.employeeId, employeeId), eq(schema.leaveBalances.year, year)));
+  }
+
+  async getLeaveBalancesByCompany(companyId: string, year: number): Promise<LeaveBalance[]> {
+    return await db.select().from(schema.leaveBalances).where(and(eq(schema.leaveBalances.companyId, companyId), eq(schema.leaveBalances.year, year)));
+  }
+
+  async createLeaveBalance(insertLeaveBalance: InsertLeaveBalance): Promise<LeaveBalance> {
+    const [balance] = await db.insert(schema.leaveBalances).values(insertLeaveBalance).returning();
+    return balance;
+  }
+
+  async updateLeaveBalance(id: string, updates: Partial<LeaveBalance>): Promise<LeaveBalance | undefined> {
+    const [balance] = await db.update(schema.leaveBalances).set(updates).where(eq(schema.leaveBalances.id, id)).returning();
+    return balance;
+  }
+
+  async deleteLeaveBalance(id: string): Promise<boolean> {
+    const result = await db.delete(schema.leaveBalances).where(eq(schema.leaveBalances.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
   }
 }
