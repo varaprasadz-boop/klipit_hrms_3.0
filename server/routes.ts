@@ -390,6 +390,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all plans (super admin only) - MUST come before /api/plans/:id
+  app.get("/api/plans/all", requireSuperAdmin, async (req, res) => {
+    try {
+      const plans = await storage.getAllPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Get all plans error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get plan by ID (authenticated users)
   app.get("/api/plans/:id", requireAuth, async (req, res) => {
     try {
@@ -402,17 +413,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(plan);
     } catch (error) {
       console.error("Get plan by ID error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-
-  // Get all plans (super admin only)
-  app.get("/api/plans/all", requireSuperAdmin, async (req, res) => {
-    try {
-      const plans = await storage.getAllPlans();
-      res.json(plans);
-    } catch (error) {
-      console.error("Get all plans error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

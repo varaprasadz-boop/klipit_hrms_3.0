@@ -1,10 +1,13 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -13,9 +16,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Check, Edit, Plus, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Check, Edit, Plus, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import type { Plan } from "@shared/schema";
 
 const availableFeatures = [
   { id: "attendance", name: "Attendance Management", category: "Core" },
@@ -43,86 +58,138 @@ const availableFeatures = [
   { id: "mobile_app", name: "Mobile App Access", category: "Advanced" },
 ];
 
-const initialPlans = [
-  {
-    id: "1",
-    name: "Basic",
-    baseCost: 299,
-    minEmployees: 10,
-    perEmployeeCost: 20,
-    description: "Perfect for small teams getting started",
-    features: ["attendance", "leave", "employees", "departments", "noticeboard"],
-    active: true,
-  },
-  {
-    id: "2",
-    name: "Advance",
-    baseCost: 599,
-    minEmployees: 25,
-    perEmployeeCost: 25,
-    description: "For growing companies with advanced needs",
-    features: ["attendance", "leave", "workflows", "expenses", "payroll", "employees", "departments", "designations", "roles", "shifts", "holidays", "noticeboard", "reports"],
-    active: true,
-    popular: true,
-  },
-  {
-    id: "3",
-    name: "Pro",
-    baseCost: 999,
-    minEmployees: 50,
-    perEmployeeCost: 50,
-    description: "Complete solution for large organizations",
-    features: ["attendance", "leave", "workflows", "expenses", "payroll", "employees", "departments", "designations", "roles", "ctc", "shifts", "holidays", "leave_types", "expense_types", "live_location", "timeline", "card_view", "lifecycle", "noticeboard", "reports", "api_access", "custom_workflows", "mobile_app"],
-    active: true,
-  },
-];
-
 export default function PlansPage() {
   const { toast } = useToast();
-  const [plans, setPlans] = useState(initialPlans);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<any>(null);
+  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [deletingPlanId, setDeletingPlanId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    baseCost: "",
-    minEmployees: "",
-    perEmployeeCost: "",
-    description: "",
+    displayName: "",
+    duration: "1",
+    price: "",
+    maxEmployees: "",
+    employeesIncluded: "",
+    pricePerAdditionalEmployee: "",
     features: [] as string[],
+    isActive: true,
+  });
+
+  // Fetch all plans
+  const { data: plans = [], isLoading } = useQuery<Plan[]>({
+    queryKey: ["/api/plans/all"],
+  });
+
+  // Create plan mutation
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest("/api/plans", "POST", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      toast({
+        title: "Plan created",
+        description: "The subscription plan has been created successfully.",
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update plan mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      return await apiRequest(`/api/plans/${id}`, "PATCH", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      toast({
+        title: "Plan updated",
+        description: "The subscription plan has been updated successfully.",
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update plan",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete plan mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return await apiRequest(`/api/plans/${id}`, "DELETE");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/plans/all"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/plans"] });
+      toast({
+        title: "Plan deleted",
+        description: "The subscription plan has been deleted successfully.",
+      });
+      setDeletingPlanId(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete plan",
+        variant: "destructive",
+      });
+      setDeletingPlanId(null);
+    },
   });
 
   const handleCreatePlan = () => {
     setEditingPlan(null);
     setFormData({
       name: "",
-      baseCost: "",
-      minEmployees: "",
-      perEmployeeCost: "",
-      description: "",
+      displayName: "",
+      duration: "1",
+      price: "",
+      maxEmployees: "",
+      employeesIncluded: "",
+      pricePerAdditionalEmployee: "",
       features: [],
+      isActive: true,
     });
     setIsDialogOpen(true);
   };
 
-  const handleEditPlan = (plan: any) => {
+  const handleEditPlan = (plan: Plan) => {
     setEditingPlan(plan);
     setFormData({
       name: plan.name,
-      baseCost: String(plan.baseCost),
-      minEmployees: String(plan.minEmployees),
-      perEmployeeCost: String(plan.perEmployeeCost),
-      description: plan.description,
-      features: [...plan.features],
+      displayName: plan.displayName,
+      duration: String(plan.duration),
+      price: String(plan.price),
+      maxEmployees: String(plan.maxEmployees),
+      employeesIncluded: String(plan.employeesIncluded),
+      pricePerAdditionalEmployee: String(plan.pricePerAdditionalEmployee),
+      features: Array.isArray(plan.features) ? plan.features : [],
+      isActive: plan.isActive,
     });
     setIsDialogOpen(true);
   };
 
   const handleDeletePlan = (id: string) => {
-    setPlans(plans.filter(p => p.id !== id));
-    toast({
-      title: "Plan deleted",
-      description: "The plan has been removed successfully.",
-    });
+    setDeletingPlanId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deletingPlanId) {
+      deleteMutation.mutate(deletingPlanId);
+    }
   };
 
   const handleFeatureToggle = (featureId: string, checked: boolean) => {
@@ -134,7 +201,7 @@ export default function PlansPage() {
   };
 
   const handleSubmit = () => {
-    if (!formData.name || !formData.baseCost || !formData.minEmployees || !formData.perEmployeeCost) {
+    if (!formData.name || !formData.displayName || !formData.price || !formData.employeesIncluded || !formData.pricePerAdditionalEmployee || !formData.maxEmployees) {
       toast({
         title: "Validation error",
         description: "Please fill in all required fields.",
@@ -153,38 +220,22 @@ export default function PlansPage() {
     }
 
     const planData = {
-      name: formData.name,
-      baseCost: Number(formData.baseCost),
-      minEmployees: Number(formData.minEmployees),
-      perEmployeeCost: Number(formData.perEmployeeCost),
-      description: formData.description,
+      name: formData.name.toLowerCase().replace(/\s+/g, "_"),
+      displayName: formData.displayName,
+      duration: Number(formData.duration),
+      price: Number(formData.price),
+      maxEmployees: Number(formData.maxEmployees),
+      employeesIncluded: Number(formData.employeesIncluded),
+      pricePerAdditionalEmployee: Number(formData.pricePerAdditionalEmployee),
       features: formData.features,
-      active: true,
+      isActive: formData.isActive,
     };
 
     if (editingPlan) {
-      setPlans(plans.map(p => 
-        p.id === editingPlan.id 
-          ? { ...p, ...planData }
-          : p
-      ));
-      toast({
-        title: "Plan updated",
-        description: "The plan has been updated successfully.",
-      });
+      updateMutation.mutate({ id: editingPlan.id, data: planData });
     } else {
-      const newPlan = {
-        id: String(plans.length + 1),
-        ...planData,
-      };
-      setPlans([...plans, newPlan]);
-      toast({
-        title: "Plan created",
-        description: "The plan has been created successfully.",
-      });
+      createMutation.mutate(planData);
     }
-
-    setIsDialogOpen(false);
   };
 
   const getFeaturesByCategory = () => {
@@ -200,6 +251,14 @@ export default function PlansPage() {
 
   const featuresByCategory = getFeaturesByCategory();
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -214,73 +273,83 @@ export default function PlansPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <Card key={plan.id} className={plan.popular ? "border-primary" : ""}>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1">
-                  <CardTitle>{plan.name}</CardTitle>
-                  <CardDescription className="mt-1">{plan.description}</CardDescription>
+        {plans.map((plan) => {
+          const features = Array.isArray(plan.features) ? plan.features : [];
+          return (
+            <Card key={plan.id} className={plan.displayName === "Advance Plan" ? "border-primary" : ""}>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <CardTitle className="flex items-center gap-2">
+                      {plan.displayName}
+                      {!plan.isActive && <Badge variant="secondary">Inactive</Badge>}
+                    </CardTitle>
+                    <CardDescription className="mt-1">{plan.name}</CardDescription>
+                  </div>
+                  {plan.displayName === "Advance Plan" && <Badge>Popular</Badge>}
                 </div>
-                {plan.popular && <Badge>Popular</Badge>}
-              </div>
-              <div className="mt-4 space-y-1">
-                <div>
-                  <span className="text-3xl font-bold">₹{plan.baseCost}</span>
-                  <span className="text-muted-foreground text-sm ml-2">/month</span>
+                <div className="mt-4 space-y-1">
+                  <div>
+                    <span className="text-3xl font-bold">₹{plan.price.toLocaleString('en-IN')}</span>
+                    <span className="text-muted-foreground text-sm ml-2">/{plan.duration} month{plan.duration > 1 ? 's' : ''}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Includes up to {plan.employeesIncluded} employees
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    + ₹{plan.pricePerAdditionalEmployee} per additional employee
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Max {plan.maxEmployees} employees
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Includes up to {plan.minEmployees} employees
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  + ₹{plan.perEmployeeCost} per additional employee
-                </p>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">{plan.features.length} Features Included:</p>
-                <ul className="space-y-2 max-h-48 overflow-y-auto">
-                  {plan.features.slice(0, 6).map((featureId) => {
-                    const feature = availableFeatures.find(f => f.id === featureId);
-                    return feature ? (
-                      <li key={featureId} className="flex items-start gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                        <span className="text-muted-foreground">{feature.name}</span>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">{features.length} Features Included:</p>
+                  <ul className="space-y-2 max-h-48 overflow-y-auto">
+                    {features.slice(0, 6).map((featureId) => {
+                      const feature = availableFeatures.find(f => f.id === featureId);
+                      return feature ? (
+                        <li key={featureId} className="flex items-start gap-2 text-sm">
+                          <Check className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                          <span className="text-muted-foreground">{feature.name}</span>
+                        </li>
+                      ) : null;
+                    })}
+                    {features.length > 6 && (
+                      <li className="text-sm text-muted-foreground ml-6">
+                        + {features.length - 6} more features
                       </li>
-                    ) : null;
-                  })}
-                  {plan.features.length > 6 && (
-                    <li className="text-sm text-muted-foreground ml-6">
-                      + {plan.features.length - 6} more features
-                    </li>
-                  )}
-                </ul>
-              </div>
-            </CardContent>
-            <CardFooter className="flex gap-2">
-              <Button 
-                variant="outline" 
-                className="flex-1"
-                onClick={() => handleEditPlan(plan)}
-                data-testid={`button-edit-${plan.name.toLowerCase()}`}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-              <Button 
-                variant="outline" 
-                size="icon"
-                onClick={() => handleDeletePlan(plan.id)}
-                data-testid={`button-delete-${plan.name.toLowerCase()}`}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </CardFooter>
-          </Card>
-        ))}
+                    )}
+                  </ul>
+                </div>
+              </CardContent>
+              <CardFooter className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => handleEditPlan(plan)}
+                  data-testid={`button-edit-${plan.name}`}
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => handleDeletePlan(plan.id)}
+                  data-testid={`button-delete-${plan.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          );
+        })}
       </div>
 
+      {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -293,77 +362,117 @@ export default function PlansPage() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Plan Name *</Label>
+                <Label htmlFor="displayName">Plan Display Name *</Label>
+                <Input
+                  id="displayName"
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                  placeholder="e.g., Basic Plan, Advance Plan, Pro Plan"
+                  data-testid="input-display-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="name">Internal Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Basic, Advance, Pro"
+                  placeholder="e.g., basic, advance, pro"
                   data-testid="input-plan-name"
                 />
+                <p className="text-xs text-muted-foreground">Lowercase, no spaces (use underscores)</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Short description of the plan"
-                  data-testid="input-description"
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="duration">Duration (Months) *</Label>
+              <Input
+                id="duration"
+                type="number"
+                min="1"
+                value={formData.duration}
+                onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                placeholder="1"
+                data-testid="input-duration"
+              />
             </div>
 
             <Separator />
 
             <div>
               <h3 className="text-lg font-semibold mb-4">Pricing Structure</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="baseCost">Base Monthly Cost (₹) *</Label>
+                  <Label htmlFor="price">Base Monthly Cost (₹) *</Label>
                   <Input
-                    id="baseCost"
+                    id="price"
                     type="number"
-                    value={formData.baseCost}
-                    onChange={(e) => setFormData({ ...formData, baseCost: e.target.value })}
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     placeholder="299"
                     data-testid="input-base-cost"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="minEmployees">Min. Employees Included *</Label>
+                  <Label htmlFor="employeesIncluded">Employees Included *</Label>
                   <Input
-                    id="minEmployees"
+                    id="employeesIncluded"
                     type="number"
-                    value={formData.minEmployees}
-                    onChange={(e) => setFormData({ ...formData, minEmployees: e.target.value })}
+                    value={formData.employeesIncluded}
+                    onChange={(e) => setFormData({ ...formData, employeesIncluded: e.target.value })}
                     placeholder="10"
-                    data-testid="input-min-employees"
+                    data-testid="input-employees-included"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="perEmployeeCost">Per Employee Cost (₹) *</Label>
+                  <Label htmlFor="pricePerAdditionalEmployee">Per Additional Employee (₹) *</Label>
                   <Input
-                    id="perEmployeeCost"
+                    id="pricePerAdditionalEmployee"
                     type="number"
-                    value={formData.perEmployeeCost}
-                    onChange={(e) => setFormData({ ...formData, perEmployeeCost: e.target.value })}
+                    value={formData.pricePerAdditionalEmployee}
+                    onChange={(e) => setFormData({ ...formData, pricePerAdditionalEmployee: e.target.value })}
                     placeholder="20"
                     data-testid="input-per-employee"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxEmployees">Max Employees *</Label>
+                  <Input
+                    id="maxEmployees"
+                    type="number"
+                    value={formData.maxEmployees}
+                    onChange={(e) => setFormData({ ...formData, maxEmployees: e.target.value })}
+                    placeholder="100"
+                    data-testid="input-max-employees"
+                  />
+                </div>
               </div>
-              {formData.baseCost && formData.minEmployees && formData.perEmployeeCost && (
+              {formData.price && formData.employeesIncluded && formData.pricePerAdditionalEmployee && (
                 <div className="mt-3 p-3 bg-muted rounded-md">
                   <p className="text-sm font-medium">Pricing Example:</p>
                   <p className="text-sm text-muted-foreground">
-                    ₹{formData.baseCost}/month (up to {formData.minEmployees} employees) + ₹{formData.perEmployeeCost} per additional employee
+                    ₹{formData.price}/month (up to {formData.employeesIncluded} employees) + ₹{formData.pricePerAdditionalEmployee} per additional employee
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    For 50 employees: ₹{Number(formData.baseCost) + (Math.max(0, 50 - Number(formData.minEmployees)) * Number(formData.perEmployeeCost))}/month
+                    For 50 employees: ₹{Number(formData.price) + (Math.max(0, 50 - Number(formData.employeesIncluded)) * Number(formData.pricePerAdditionalEmployee))}/month
                   </p>
                 </div>
               )}
+            </div>
+
+            <Separator />
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="isActive">Plan Status</Label>
+                <p className="text-sm text-muted-foreground">Active plans are visible during registration</p>
+              </div>
+              <Switch
+                id="isActive"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => setFormData({ ...formData, isActive: checked })}
+                data-testid="switch-active"
+              />
             </div>
 
             <Separator />
@@ -405,12 +514,44 @@ export default function PlansPage() {
             <Button variant="outline" onClick={() => setIsDialogOpen(false)} data-testid="button-cancel">
               Cancel
             </Button>
-            <Button onClick={handleSubmit} data-testid="button-submit">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={createMutation.isPending || updateMutation.isPending}
+              data-testid="button-submit"
+            >
+              {(createMutation.isPending || updateMutation.isPending) && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               {editingPlan ? "Update" : "Create"} Plan
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deletingPlanId} onOpenChange={() => setDeletingPlanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this subscription plan. Companies using this plan may be affected.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
