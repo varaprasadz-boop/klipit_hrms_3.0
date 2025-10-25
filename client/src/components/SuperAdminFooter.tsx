@@ -9,7 +9,7 @@ export default function SuperAdminFooter() {
   if (!isSuperAdmin) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 right-4 z-10">
       <Link href="/superadmin">
         <Button
           size="lg"
