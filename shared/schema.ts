@@ -229,6 +229,7 @@ export const departments = pgTable("departments", {
 
 export const insertDepartmentSchema = createInsertSchema(departments).omit({
   id: true,
+  companyId: true,
   createdAt: true,
 });
 
@@ -246,6 +247,7 @@ export const designations = pgTable("designations", {
 
 export const insertDesignationSchema = createInsertSchema(designations).omit({
   id: true,
+  companyId: true,
   createdAt: true,
 });
 
@@ -263,6 +265,7 @@ export const rolesLevels = pgTable("roles_levels", {
 
 export const insertRoleLevelSchema = createInsertSchema(rolesLevels).omit({
   id: true,
+  companyId: true,
   createdAt: true,
 });
 
