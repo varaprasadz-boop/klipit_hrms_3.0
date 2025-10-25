@@ -75,7 +75,6 @@ function Router() {
       <Route path="/register-company" component={RegisterCompany} />
       <Route path="/waiting-approval" component={WaitingApproval} />
       <Route path="/offline-requests" component={OfflineRequests} />
-      <Route path="/dashboard/admin" component={AdminDashboard} />
       
       <Route path="/superadmin">
         <ProtectedRoute requireSuperAdmin>
@@ -239,15 +238,51 @@ function Router() {
           <CtcComponentsPage />
         </ProtectedRoute>
       </Route>
-      <Route path="/dashboard/admin/settings" component={SettingsPage} />
-      <Route path="/dashboard/admin/settings/company" component={AdminCompanySettingsPage} />
-      <Route path="/dashboard/admin/settings/company-info" component={CompanyInfoSettings} />
-      <Route path="/dashboard/admin/settings/email-smtp" component={EmailSMTPSettings} />
-      <Route path="/dashboard/admin/settings/contact-info" component={ContactInfoSettings} />
-      <Route path="/dashboard/admin/settings/package-details" component={PackageDetailsSettings} />
-      <Route path="/dashboard/admin/monitoring/live-location" component={LiveLocation} />
-      <Route path="/dashboard/admin/monitoring/timeline" component={Timeline} />
-      <Route path="/dashboard/admin/monitoring/card-view" component={CardView} />
+      <Route path="/dashboard/admin/settings">
+        <ProtectedRoute requireCompanyAdmin>
+          <SettingsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/settings/company">
+        <ProtectedRoute requireCompanyAdmin>
+          <AdminCompanySettingsPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/settings/company-info">
+        <ProtectedRoute requireCompanyAdmin>
+          <CompanyInfoSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/settings/email-smtp">
+        <ProtectedRoute requireCompanyAdmin>
+          <EmailSMTPSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/settings/contact-info">
+        <ProtectedRoute requireCompanyAdmin>
+          <ContactInfoSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/settings/package-details">
+        <ProtectedRoute requireCompanyAdmin>
+          <PackageDetailsSettings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/monitoring/live-location">
+        <ProtectedRoute requireCompanyAdmin>
+          <LiveLocation />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/monitoring/timeline">
+        <ProtectedRoute requireCompanyAdmin>
+          <Timeline />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/dashboard/admin/monitoring/card-view">
+        <ProtectedRoute requireCompanyAdmin>
+          <CardView />
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard/admin/lifecycle">
         <ProtectedRoute requireCompanyAdmin>
           <Lifecycle />
