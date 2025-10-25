@@ -1,9 +1,12 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { 
   Select,
   SelectContent,
@@ -11,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   LayoutDashboard, Users, Clock, Umbrella, Workflow, 
@@ -19,6 +30,9 @@ import {
   Search, Calendar, CheckCircle, XCircle, AlertCircle, Clock3
 } from "lucide-react";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { LeaveRequest, User, Department, LeaveType } from "@shared/schema";
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard/admin", icon: LayoutDashboard },
@@ -73,71 +87,99 @@ const menuItems = [
   },
 ];
 
-// Mock data for demonstration
-const mockLeaveRequests = [
-  {
-    id: "1",
-    employeeName: "John Doe",
-    employeeId: "EMP001",
-    department: "Engineering",
-    leaveType: "Annual Leave",
-    fromDate: "2025-10-25",
-    toDate: "2025-10-27",
-    days: 3,
-    reason: "Family vacation",
-    status: "pending",
-    appliedOn: "2025-10-21",
-  },
-  {
-    id: "2",
-    employeeName: "Jane Smith",
-    employeeId: "EMP002",
-    department: "Marketing",
-    leaveType: "Sick Leave",
-    fromDate: "2025-10-22",
-    toDate: "2025-10-23",
-    days: 2,
-    reason: "Medical appointment",
-    status: "pending",
-    appliedOn: "2025-10-20",
-  },
-  {
-    id: "3",
-    employeeName: "Mike Johnson",
-    employeeId: "EMP003",
-    department: "Sales",
-    leaveType: "Annual Leave",
-    fromDate: "2025-11-01",
-    toDate: "2025-11-05",
-    days: 5,
-    reason: "Personal",
-    status: "approved",
-    appliedOn: "2025-10-15",
-    approvedBy: "Admin",
-    approvedOn: "2025-10-16",
-  },
-  {
-    id: "4",
-    employeeName: "Sarah Wilson",
-    employeeId: "EMP004",
-    department: "HR",
-    leaveType: "Casual Leave",
-    fromDate: "2025-10-20",
-    toDate: "2025-10-20",
-    days: 1,
-    reason: "Personal work",
-    status: "rejected",
-    appliedOn: "2025-10-19",
-    rejectedBy: "Admin",
-    rejectedOn: "2025-10-19",
-    rejectionReason: "Insufficient leave balance",
-  },
-];
-
 export default function LeavePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [leaveTypeFilter, setLeaveTypeFilter] = useState("all");
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const { toast } = useToast();
+
+  const { data: leaveRequests = [], isLoading: loadingRequests } = useQuery<LeaveRequest[]>({
+    queryKey: ["/api/leave-requests"],
+  });
+
+  const { data: employees = [] } = useQuery<User[]>({
+    queryKey: ["/api/employees"],
+  });
+
+  const { data: departments = [] } = useQuery<Department[]>({
+    queryKey: ["/api/departments"],
+  });
+
+  const { data: leaveTypes = [] } = useQuery<LeaveType[]>({
+    queryKey: ["/api/leave-types"],
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async (requestId: string) => {
+      return await apiRequest("PATCH", `/api/leave-requests/${requestId}`, {
+        status: "approved",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      toast({ title: "Leave request approved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve leave request", variant: "destructive" });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+      return await apiRequest("PATCH", `/api/leave-requests/${requestId}`, {
+        status: "rejected",
+        rejectionReason: reason,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/leave-requests"] });
+      toast({ title: "Leave request rejected" });
+      setRejectDialogOpen(false);
+      setRejectionReason("");
+      setSelectedRequestId(null);
+    },
+    onError: () => {
+      toast({ title: "Failed to reject leave request", variant: "destructive" });
+    },
+  });
+
+  const handleApprove = (requestId: string) => {
+    approveMutation.mutate(requestId);
+  };
+
+  const handleRejectClick = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    setRejectDialogOpen(true);
+  };
+
+  const handleRejectSubmit = () => {
+    if (!selectedRequestId) return;
+    if (!rejectionReason.trim()) {
+      toast({ title: "Please provide a rejection reason", variant: "destructive" });
+      return;
+    }
+    rejectMutation.mutate({ requestId: selectedRequestId, reason: rejectionReason });
+  };
+
+  const getEmployeeName = (employeeId: string) => {
+    const employee = employees.find(e => e.id === employeeId);
+    return employee ? `${employee.firstName} ${employee.lastName}` : "Unknown";
+  };
+
+  const getDepartmentName = (employeeId: string) => {
+    const employee = employees.find(e => e.id === employeeId);
+    if (!employee || !employee.departmentId) return "N/A";
+    const department = departments.find(d => d.id === employee.departmentId);
+    return department?.name || "N/A";
+  };
+
+  const getLeaveTypeName = (leaveTypeId: string) => {
+    const leaveType = leaveTypes.find(lt => lt.id === leaveTypeId);
+    return leaveType?.name || "Unknown";
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -147,19 +189,24 @@ export default function LeavePage() {
         return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
       case "rejected":
         return <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+      case "cancelled":
+        return <Badge variant="outline"><XCircle className="h-3 w-3 mr-1" />Cancelled</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const filteredRequests = mockLeaveRequests.filter(request => {
+  const filteredRequests = leaveRequests.filter(request => {
+    const employeeName = getEmployeeName(request.employeeId);
+    const department = getDepartmentName(request.employeeId);
+    const leaveTypeName = getLeaveTypeName(request.leaveTypeId);
+    
     const matchesSearch = 
-      request.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.department.toLowerCase().includes(searchQuery.toLowerCase());
+      employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      department.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === "all" || request.status === statusFilter;
-    const matchesLeaveType = leaveTypeFilter === "all" || request.leaveType === leaveTypeFilter;
+    const matchesLeaveType = leaveTypeFilter === "all" || request.leaveTypeId === leaveTypeFilter;
     
     return matchesSearch && matchesStatus && matchesLeaveType;
   });
@@ -168,7 +215,13 @@ export default function LeavePage() {
   const approvedRequests = filteredRequests.filter(r => r.status === "approved");
   const rejectedRequests = filteredRequests.filter(r => r.status === "rejected");
 
-  const renderLeaveCard = (request: typeof mockLeaveRequests[0]) => (
+  const approvedToday = leaveRequests.filter(r => 
+    r.status === "approved" && 
+    r.approvedOn && 
+    format(new Date(r.approvedOn), "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd")
+  ).length;
+
+  const renderLeaveCard = (request: LeaveRequest) => (
     <Card key={request.id} data-testid={`leave-card-${request.id}`}>
       <CardContent className="p-4">
         <div className="space-y-3">
@@ -176,13 +229,12 @@ export default function LeavePage() {
             <div className="flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="font-semibold" data-testid={`leave-employee-${request.id}`}>
-                  {request.employeeName}
+                  {getEmployeeName(request.employeeId)}
                 </h4>
-                <Badge variant="outline" className="text-xs">{request.employeeId}</Badge>
                 {getStatusBadge(request.status)}
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {request.department} • {request.leaveType}
+                {getDepartmentName(request.employeeId)} • {getLeaveTypeName(request.leaveTypeId)}
               </p>
             </div>
             {request.status === "pending" && (
@@ -191,6 +243,8 @@ export default function LeavePage() {
                   size="sm" 
                   variant="outline"
                   className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20"
+                  onClick={() => handleApprove(request.id)}
+                  disabled={approveMutation.isPending}
                   data-testid={`button-approve-${request.id}`}
                 >
                   Approve
@@ -199,6 +253,8 @@ export default function LeavePage() {
                   size="sm" 
                   variant="outline"
                   className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                  onClick={() => handleRejectClick(request.id)}
+                  disabled={rejectMutation.isPending}
                   data-testid={`button-reject-${request.id}`}
                 >
                   Reject
@@ -233,16 +289,16 @@ export default function LeavePage() {
             </div>
           )}
 
-          {request.status === "approved" && request.approvedBy && (
+          {request.status === "approved" && request.approvedOn && (
             <div className="text-sm text-green-600 dark:text-green-400">
-              Approved by {request.approvedBy} on {format(new Date(request.approvedOn!), "MMM dd, yyyy")}
+              Approved on {format(new Date(request.approvedOn), "MMM dd, yyyy")}
             </div>
           )}
 
-          {request.status === "rejected" && request.rejectedBy && (
+          {request.status === "rejected" && request.rejectedOn && (
             <div className="text-sm">
               <p className="text-red-600 dark:text-red-400">
-                Rejected by {request.rejectedBy} on {format(new Date(request.rejectedOn!), "MMM dd, yyyy")}
+                Rejected on {format(new Date(request.rejectedOn), "MMM dd, yyyy")}
               </p>
               {request.rejectionReason && (
                 <p className="text-muted-foreground mt-1">Reason: {request.rejectionReason}</p>
@@ -262,168 +318,214 @@ export default function LeavePage() {
           <p className="text-muted-foreground">Review and manage employee leave requests</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-              <Clock3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-pending">{pendingRequests.length}</div>
-              <p className="text-xs text-muted-foreground">Awaiting approval</p>
-            </CardContent>
-          </Card>
+        {loadingRequests ? (
+          <div className="text-center py-8 text-sm text-muted-foreground">
+            Loading leave requests...
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                  <Clock3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="stat-pending">{pendingRequests.length}</div>
+                  <p className="text-xs text-muted-foreground">Awaiting approval</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Approved Today</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-approved">0</div>
-              <p className="text-xs text-muted-foreground">Approved requests</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Approved Today</CardTitle>
+                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="stat-approved">{approvedToday}</div>
+                  <p className="text-xs text-muted-foreground">Approved requests</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Approved</CardTitle>
-              <Umbrella className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-total-approved">{approvedRequests.length}</div>
-              <p className="text-xs text-muted-foreground">This period</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Approved</CardTitle>
+                  <Umbrella className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="stat-total-approved">{approvedRequests.length}</div>
+                  <p className="text-xs text-muted-foreground">This period</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Rejection Rate</CardTitle>
-              <XCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="stat-rejection-rate">
-                {mockLeaveRequests.length > 0 
-                  ? Math.round((rejectedRequests.length / mockLeaveRequests.length) * 100)
-                  : 0}%
-              </div>
-              <p className="text-xs text-muted-foreground">{rejectedRequests.length} rejected</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div>
-                <CardTitle>Leave Requests</CardTitle>
-                <CardDescription>Manage all employee leave applications</CardDescription>
-              </div>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Rejection Rate</CardTitle>
+                  <XCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold" data-testid="stat-rejection-rate">
+                    {leaveRequests.length > 0 
+                      ? Math.round((rejectedRequests.length / leaveRequests.length) * 100)
+                      : 0}%
+                  </div>
+                  <p className="text-xs text-muted-foreground">{rejectedRequests.length} rejected</p>
+                </CardContent>
+              </Card>
             </div>
-            
-            <div className="flex gap-4 flex-wrap mt-4">
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by name, ID, or department..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                    data-testid="input-search"
-                  />
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div>
+                    <CardTitle>Leave Requests</CardTitle>
+                    <CardDescription>Manage all employee leave applications</CardDescription>
+                  </div>
                 </div>
-              </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px]" data-testid="select-status">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={leaveTypeFilter} onValueChange={setLeaveTypeFilter}>
-                <SelectTrigger className="w-[180px]" data-testid="select-leave-type">
-                  <SelectValue placeholder="Leave Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="Annual Leave">Annual Leave</SelectItem>
-                  <SelectItem value="Sick Leave">Sick Leave</SelectItem>
-                  <SelectItem value="Casual Leave">Casual Leave</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all" data-testid="tab-all">
-                  All ({filteredRequests.length})
-                </TabsTrigger>
-                <TabsTrigger value="pending" data-testid="tab-pending">
-                  Pending ({pendingRequests.length})
-                </TabsTrigger>
-                <TabsTrigger value="approved" data-testid="tab-approved">
-                  Approved ({approvedRequests.length})
-                </TabsTrigger>
-                <TabsTrigger value="rejected" data-testid="tab-rejected">
-                  Rejected ({rejectedRequests.length})
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="all" className="space-y-3 mt-4">
-                {filteredRequests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Umbrella className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground" data-testid="text-no-requests">No leave requests found</p>
+                
+                <div className="flex gap-4 flex-wrap mt-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Search by name or department..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                        data-testid="input-search"
+                      />
+                    </div>
                   </div>
-                ) : (
-                  filteredRequests.map(renderLeaveCard)
-                )}
-              </TabsContent>
+                  
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[150px]" data-testid="select-status">
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="approved">Approved</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
 
-              <TabsContent value="pending" className="space-y-3 mt-4">
-                {pendingRequests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Clock3 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No pending requests</p>
-                  </div>
-                ) : (
-                  pendingRequests.map(renderLeaveCard)
-                )}
-              </TabsContent>
+                  <Select value={leaveTypeFilter} onValueChange={setLeaveTypeFilter}>
+                    <SelectTrigger className="w-[180px]" data-testid="select-leave-type">
+                      <SelectValue placeholder="Leave Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      {leaveTypes.map((lt) => (
+                        <SelectItem key={lt.id} value={lt.id}>
+                          {lt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Tabs defaultValue="all" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="all" data-testid="tab-all">
+                      All ({filteredRequests.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="pending" data-testid="tab-pending">
+                      Pending ({pendingRequests.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="approved" data-testid="tab-approved">
+                      Approved ({approvedRequests.length})
+                    </TabsTrigger>
+                    <TabsTrigger value="rejected" data-testid="tab-rejected">
+                      Rejected ({rejectedRequests.length})
+                    </TabsTrigger>
+                  </TabsList>
 
-              <TabsContent value="approved" className="space-y-3 mt-4">
-                {approvedRequests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No approved requests</p>
-                  </div>
-                ) : (
-                  approvedRequests.map(renderLeaveCard)
-                )}
-              </TabsContent>
+                  <TabsContent value="all" className="space-y-3 mt-4">
+                    {filteredRequests.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Umbrella className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground" data-testid="text-no-requests">No leave requests found</p>
+                      </div>
+                    ) : (
+                      filteredRequests.map(renderLeaveCard)
+                    )}
+                  </TabsContent>
 
-              <TabsContent value="rejected" className="space-y-3 mt-4">
-                {rejectedRequests.length === 0 ? (
-                  <div className="text-center py-8">
-                    <XCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                    <p className="text-muted-foreground">No rejected requests</p>
-                  </div>
-                ) : (
-                  rejectedRequests.map(renderLeaveCard)
-                )}
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                  <TabsContent value="pending" className="space-y-3 mt-4">
+                    {pendingRequests.length === 0 ? (
+                      <div className="text-center py-8">
+                        <Clock3 className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">No pending requests</p>
+                      </div>
+                    ) : (
+                      pendingRequests.map(renderLeaveCard)
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="approved" className="space-y-3 mt-4">
+                    {approvedRequests.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">No approved requests</p>
+                      </div>
+                    ) : (
+                      approvedRequests.map(renderLeaveCard)
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="rejected" className="space-y-3 mt-4">
+                    {rejectedRequests.length === 0 ? (
+                      <div className="text-center py-8">
+                        <XCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                        <p className="text-muted-foreground">No rejected requests</p>
+                      </div>
+                    ) : (
+                      rejectedRequests.map(renderLeaveCard)
+                    )}
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
+
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reject Leave Request</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for rejecting this leave request
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Rejection Reason</Label>
+              <Textarea
+                placeholder="Enter reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={4}
+                data-testid="textarea-rejection-reason"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRejectSubmit}
+              disabled={rejectMutation.isPending}
+              data-testid="button-confirm-reject"
+            >
+              {rejectMutation.isPending ? "Rejecting..." : "Reject Request"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

@@ -780,3 +780,57 @@ export const updateLeaveBalanceSchema = z.object({
 export type InsertLeaveBalance = z.infer<typeof insertLeaveBalanceSchema>;
 export type UpdateLeaveBalance = z.infer<typeof updateLeaveBalanceSchema>;
 export type LeaveBalance = typeof leaveBalances.$inferSelect;
+
+// Support Tickets
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id),
+  subject: text("subject").notNull(),
+  description: text("description"),
+  priority: text("priority").notNull().default("medium"), // low, medium, high
+  status: text("status").notNull().default("open"), // open, in-progress, resolved, closed
+  assignedTo: varchar("assigned_to"),
+  createdBy: varchar("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  companyId: true,
+  createdBy: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const updateSupportTicketSchema = z.object({
+  subject: z.string().optional(),
+  description: z.string().optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  status: z.enum(["open", "in-progress", "resolved", "closed"]).optional(),
+  assignedTo: z.string().optional(),
+});
+
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type UpdateSupportTicket = z.infer<typeof updateSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+
+// Audit Logs
+export const auditLogs = pgTable("audit_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  companyId: varchar("company_id").references(() => companies.id),
+  action: text("action").notNull(), // e.g., "Company Created", "User Added", "Plan Modified"
+  details: text("details"), // descriptive details of the action
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+export type AuditLog = typeof auditLogs.$inferSelect;

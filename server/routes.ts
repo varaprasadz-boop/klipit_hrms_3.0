@@ -32,6 +32,9 @@ import {
   updateLeaveRequestSchema,
   insertLeaveBalanceSchema,
   updateLeaveBalanceSchema,
+  insertSupportTicketSchema,
+  updateSupportTicketSchema,
+  insertAuditLogSchema,
   type ExpenseClaim,
   UserRole,
 } from "@shared/schema";
@@ -3857,6 +3860,124 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedBalance);
     } catch (error) {
       console.error("Update leave balance error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Support Ticket routes
+  app.get("/api/support-tickets", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      let tickets;
+      if (session.role === UserRole.SUPER_ADMIN) {
+        tickets = await storage.getAllSupportTickets();
+      } else {
+        tickets = await storage.getSupportTicketsByCompany(session.companyId!);
+      }
+
+      res.json(tickets);
+    } catch (error) {
+      console.error("Get support tickets error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/support-tickets/:id", requireAuth, async (req, res) => {
+    try {
+      const ticket = await storage.getSupportTicket(req.params.id);
+      if (!ticket) {
+        return res.status(404).json({ error: "Support ticket not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.role !== UserRole.SUPER_ADMIN && session?.companyId !== ticket.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      res.json(ticket);
+    } catch (error) {
+      console.error("Get support ticket error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/support-tickets", requireAuth, async (req, res) => {
+    try {
+      const session = getSession(req);
+      if (!session) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const ticketData = insertSupportTicketSchema.parse(req.body);
+
+      const ticket = await storage.createSupportTicket({
+        ...ticketData,
+        companyId: session.companyId!,
+        createdBy: session.userId,
+      });
+
+      res.status(201).json(ticket);
+    } catch (error) {
+      console.error("Create support ticket error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/support-tickets/:id", requireAuth, async (req, res) => {
+    try {
+      const ticket = await storage.getSupportTicket(req.params.id);
+      if (!ticket) {
+        return res.status(404).json({ error: "Support ticket not found" });
+      }
+
+      const session = getSession(req);
+      if (session?.role !== UserRole.SUPER_ADMIN && session?.companyId !== ticket.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const updates = updateSupportTicketSchema.parse(req.body);
+      const updatedTicket = await storage.updateSupportTicket(req.params.id, updates);
+
+      res.json(updatedTicket);
+    } catch (error) {
+      console.error("Update support ticket error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/support-tickets/:id", requireSuperAdmin, async (req, res) => {
+    try {
+      const success = await storage.deleteSupportTicket(req.params.id);
+      res.json({ success });
+    } catch (error) {
+      console.error("Delete support ticket error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Audit Log routes
+  app.get("/api/audit-logs", requireSuperAdmin, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const logs = await storage.getAllAuditLogs(limit);
+      res.json(logs);
+    } catch (error) {
+      console.error("Get audit logs error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/audit-logs", requireAuth, async (req, res) => {
+    try {
+      const logData = insertAuditLogSchema.parse(req.body);
+      const log = await storage.createAuditLog(logData);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Create audit log error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });

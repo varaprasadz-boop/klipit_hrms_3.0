@@ -25,7 +25,9 @@ import type {
   Workflow, InsertWorkflow,
   Notice, InsertNotice,
   LeaveRequest, InsertLeaveRequest,
-  LeaveBalance, InsertLeaveBalance
+  LeaveBalance, InsertLeaveBalance,
+  SupportTicket, InsertSupportTicket,
+  AuditLog, InsertAuditLog
 } from "@shared/schema";
 import type { IStorage } from "./storage";
 import { randomUUID } from "crypto";
@@ -709,5 +711,57 @@ export class DbStorage implements IStorage {
   async deleteLeaveBalance(id: string): Promise<boolean> {
     const result = await db.delete(schema.leaveBalances).where(eq(schema.leaveBalances.id, id));
     return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Support Ticket methods
+  async getSupportTicket(id: string): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.select().from(schema.supportTickets).where(eq(schema.supportTickets.id, id));
+    return ticket;
+  }
+
+  async getSupportTicketsByCompany(companyId: string): Promise<SupportTicket[]> {
+    return await db.select().from(schema.supportTickets).where(eq(schema.supportTickets.companyId, companyId)).orderBy(desc(schema.supportTickets.createdAt));
+  }
+
+  async getAllSupportTickets(): Promise<SupportTicket[]> {
+    return await db.select().from(schema.supportTickets).orderBy(desc(schema.supportTickets.createdAt));
+  }
+
+  async createSupportTicket(insertTicket: InsertSupportTicket): Promise<SupportTicket> {
+    const [ticket] = await db.insert(schema.supportTickets).values(insertTicket).returning();
+    return ticket;
+  }
+
+  async updateSupportTicket(id: string, updates: Partial<SupportTicket>): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.update(schema.supportTickets).set({ ...updates, updatedAt: new Date() }).where(eq(schema.supportTickets.id, id)).returning();
+    return ticket;
+  }
+
+  async deleteSupportTicket(id: string): Promise<boolean> {
+    const result = await db.delete(schema.supportTickets).where(eq(schema.supportTickets.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  // Audit Log methods
+  async getAuditLog(id: string): Promise<AuditLog | undefined> {
+    const [log] = await db.select().from(schema.auditLogs).where(eq(schema.auditLogs.id, id));
+    return log;
+  }
+
+  async getAllAuditLogs(limit: number = 100): Promise<AuditLog[]> {
+    return await db.select().from(schema.auditLogs).orderBy(desc(schema.auditLogs.createdAt)).limit(limit);
+  }
+
+  async getAuditLogsByCompany(companyId: string, limit: number = 100): Promise<AuditLog[]> {
+    return await db.select().from(schema.auditLogs).where(eq(schema.auditLogs.companyId, companyId)).orderBy(desc(schema.auditLogs.createdAt)).limit(limit);
+  }
+
+  async getAuditLogsByUser(userId: string, limit: number = 100): Promise<AuditLog[]> {
+    return await db.select().from(schema.auditLogs).where(eq(schema.auditLogs.userId, userId)).orderBy(desc(schema.auditLogs.createdAt)).limit(limit);
+  }
+
+  async createAuditLog(insertLog: InsertAuditLog): Promise<AuditLog> {
+    const [log] = await db.insert(schema.auditLogs).values(insertLog).returning();
+    return log;
   }
 }

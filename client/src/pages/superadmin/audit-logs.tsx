@@ -1,45 +1,52 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search } from "lucide-react";
-
-const mockLogs = [
-  { 
-    id: 1, 
-    timestamp: "2024-10-20 14:32:15", 
-    user: "superadmin@hrmsworld.com", 
-    action: "Company Created", 
-    details: "Created company: Tech Solutions Inc",
-    ip: "192.168.1.100"
-  },
-  { 
-    id: 2, 
-    timestamp: "2024-10-20 14:15:42", 
-    user: "admin@techsolutions.com", 
-    action: "User Added", 
-    details: "Added employee: jane@techsolutions.com",
-    ip: "192.168.1.50"
-  },
-  { 
-    id: 3, 
-    timestamp: "2024-10-20 13:45:22", 
-    user: "superadmin@hrmsworld.com", 
-    action: "Plan Modified", 
-    details: "Updated Premium plan pricing",
-    ip: "192.168.1.100"
-  },
-  { 
-    id: 4, 
-    timestamp: "2024-10-20 12:30:10", 
-    user: "admin@marketingpro.com", 
-    action: "Settings Changed", 
-    details: "Modified company settings",
-    ip: "203.45.67.89"
-  },
-];
+import { Search, FileText } from "lucide-react";
+import { format } from "date-fns";
+import type { AuditLog, User, Company } from "@shared/schema";
 
 export default function AuditLogsPage() {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: logs = [], isLoading } = useQuery<AuditLog[]>({
+    queryKey: ["/api/audit-logs"],
+  });
+
+  const { data: users = [] } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  const { data: companies = [] } = useQuery<Company[]>({
+    queryKey: ["/api/companies"],
+  });
+
+  const getUserEmail = (userId: string | null) => {
+    if (!userId) return "System";
+    const user = users.find(u => u.id === userId);
+    return user?.email || "Unknown";
+  };
+
+  const getCompanyName = (companyId: string | null) => {
+    if (!companyId) return "N/A";
+    const company = companies.find(c => c.id === companyId);
+    return company?.name || "Unknown";
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const userEmail = getUserEmail(log.userId);
+    const companyName = getCompanyName(log.companyId);
+    
+    return (
+      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      log.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      companyName.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
+
   return (
     <div className="space-y-6">
       <div>
@@ -53,37 +60,58 @@ export default function AuditLogsPage() {
           <Input 
             placeholder="Search logs..." 
             className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             data-testid="input-search-logs"
           />
         </div>
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>User</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Details</TableHead>
-              <TableHead>IP Address</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {mockLogs.map((log) => (
-              <TableRow key={log.id} data-testid={`row-log-${log.id}`}>
-                <TableCell className="font-mono text-sm">{log.timestamp}</TableCell>
-                <TableCell className="text-sm">{log.user}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">{log.action}</Badge>
-                </TableCell>
-                <TableCell className="text-sm text-muted-foreground">{log.details}</TableCell>
-                <TableCell className="font-mono text-sm">{log.ip}</TableCell>
+      {isLoading ? (
+        <div className="text-center py-8 text-sm text-muted-foreground">
+          Loading audit logs...
+        </div>
+      ) : filteredLogs.length === 0 ? (
+        <div className="text-center py-12">
+          <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+          <p className="text-muted-foreground" data-testid="text-no-logs">
+            {searchQuery ? "No logs match your search" : "No audit logs found"}
+          </p>
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Company</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead>IP Address</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+            </TableHeader>
+            <TableBody>
+              {filteredLogs.map((log) => (
+                <TableRow key={log.id} data-testid={`row-log-${log.id}`}>
+                  <TableCell className="font-mono text-sm">
+                    {format(new Date(log.createdAt), "yyyy-MM-dd HH:mm:ss")}
+                  </TableCell>
+                  <TableCell className="text-sm">{getUserEmail(log.userId)}</TableCell>
+                  <TableCell className="text-sm">{getCompanyName(log.companyId)}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{log.action}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground max-w-md truncate">
+                    {log.details || "-"}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{log.ipAddress || "-"}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }
